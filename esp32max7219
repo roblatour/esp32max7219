@@ -1,10 +1,12 @@
+// Copyright Rob Latour, 2021
 
-// Copyright Rob Latour, 2020, All Rights Reserved
 // use board doit esp32 devkit v1
 
 // For OTA Updates please ensure you are connected to the same wireless network as the device being updated
 
 // ref: https://www.brainy-bits.com/arduino-max7219-scrolling-text-matrix/
+
+// ota password MsgBoard
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -26,7 +28,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-#define MAX_DEVICES 12  // Number of modules connected
+#define MAX_DEVICES 12  // <********************************* Number of modules connected, you may need to change this
 
 //pins for a ESP32 Dev Kit V1
 #define CLK_PIN   18 // SCK (Brown)
@@ -50,7 +52,7 @@ int slider_scroll_speed;
 char curMessage[BUF_SIZE] = { " " };  // used to hold current message
 
 //Program ID
-String ProgramID = "ESP32 message board v1.0";
+String ProgramID = "ESP32 message board v1.1";
 
 //Wifi
 /* WiFi network name and password */
@@ -62,23 +64,88 @@ unsigned long secondsSinceStartup;
 unsigned long TwoMinutes = 120000;
 
 // External button used to clear message
-const int External_Button = 33;
+//const int External_Button = 33;
 
 // Pushbullet
 const String My_PushBullet_Access_Token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  // <********************************* change this
 
 const String Pushbullet_Note_Title_To_React_To = "Leave a message";
 const String Pushbullet_Note_Title_To_Clear    = "Clear the message";
-const String Pushbullet_Note_Title_To_Restart   = "Reset the ESP32 message board alpha 1 beta 2";  // triggered by "Restart the message board"
+const String Pushbullet_Note_Title_To_Restart  = "Reset the ESP32 message board alpha 1 beta 2";  // triggered by "Restart the message board"
 
 const String PushBullet_Server = "stream.pushbullet.com";
 const String PushBullet_Server_Directory = "/websocket/";
-const String PushBullet_KeepAlive_ID = "rob_messages_active";   // <do not change this for this program; special code Pushbullet has provide for use with this program only; used to prevent accounts from expiring after 30 days
+const String PushBullet_KeepAlive_ID = "rob_messages_active"; // <*** do not change this for this program; special code Pushbullet has provide for use with this program only; used to prevent accounts from expiring for 30 days
 const int PushBullet_Server_Port = 443;
-const char* host = "api.pushbullet.com";
-const char* KeepAliveHost = "zebra.pushbullet.com";
-const int https_Port = 443;
+const int https_port = 443;
+
 String My_PushBullet_Client_ID = "";
+
+// to get a certificate, use a program called openssl
+// to get oppenssl, download Windows executable from: https://kb.firedaemon.com/support/solutions/articles/4000121705#Download-OpenSSL
+// here is the command to get the certificate for api.pushbullet.com
+//      openssl s_client -showcerts -connect api.pushbullet.com:443
+// use the second certificate displayed
+
+const char* host = "api.pushbullet.com";
+const char* Pushbullet_API_root_ca = "-----BEGIN CERTIFICATE-----\n" \
+                                     "MIIESjCCAzKgAwIBAgINAeO0nXfN9AwGGRa24zANBgkqhkiG9w0BAQsFADBMMSAw\n" \
+                                     "HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEGA1UEChMKR2xvYmFs\n" \
+                                     "U2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0xNzA2MTUwMDAwNDJaFw0yMTEy\n" \
+                                     "MTUwMDAwNDJaMEIxCzAJBgNVBAYTAlVTMR4wHAYDVQQKExVHb29nbGUgVHJ1c3Qg\n" \
+                                     "U2VydmljZXMxEzARBgNVBAMTCkdUUyBDQSAxRDIwggEiMA0GCSqGSIb3DQEBAQUA\n" \
+                                     "A4IBDwAwggEKAoIBAQCy2Xvh4dc/HJFy//kQzYcVeXS3PkeLsmFV/Qw2xn53Qjqy\n" \
+                                     "+lJbC3GB1k3V6SskTSNeiytyXyFVtSnvRMvrglKrPiekkklBSt6o3THgPN9tek0t\n" \
+                                     "1m0JsA7jYfKy/pBsWnsQZEm0CzwI8up5DGymGolqVjKgKaIwgo+BUQzzornZdbki\n" \
+                                     "nicUukovLGNYh/FdEOZfkbu5W8xH4h51toyPzHVdVwXngsaEDnRyKss7VfVucOtm\n" \
+                                     "acMkuziTNZtoYS+b1q6md3J8cUhYMxCv6YCCHbUHQBv2PeyirUedtJQpNLOML80l\n" \
+                                     "A1g1wCWkVV/hswdWPcjQY7gg+4wdQyz4+anV7G+XAgMBAAGjggEzMIIBLzAOBgNV\n" \
+                                     "HQ8BAf8EBAMCAYYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMBIGA1Ud\n" \
+                                     "EwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFLHdMl3otzdy0s5czib+R3niAQjpMB8G\n" \
+                                     "A1UdIwQYMBaAFJviB1dnHB7AagbeWbSaLd/cGYYuMDUGCCsGAQUFBwEBBCkwJzAl\n" \
+                                     "BggrBgEFBQcwAYYZaHR0cDovL29jc3AucGtpLmdvb2cvZ3NyMjAyBgNVHR8EKzAp\n" \
+                                     "MCegJaAjhiFodHRwOi8vY3JsLnBraS5nb29nL2dzcjIvZ3NyMi5jcmwwPwYDVR0g\n" \
+                                     "BDgwNjA0BgZngQwBAgEwKjAoBggrBgEFBQcCARYcaHR0cHM6Ly9wa2kuZ29vZy9y\n" \
+                                     "ZXBvc2l0b3J5LzANBgkqhkiG9w0BAQsFAAOCAQEAcUrEwyOu9+OyAnmME+hTjoDF\n" \
+                                     "8OPvcWCpqXs0ZYU0vUc7A1cWAJlIOuDg8OrNtkg81aty8NAby2QtOw10aNd0iDF8\n" \
+                                     "aroO8IxNeM7aEPSKlkWXqZetxTUaGGTok7YNnR+5Xh2A6udbnI6uDqaE0tEXzrP7\n" \
+                                     "9oFPPOZon8/xpnbFfafz3X1YD+D2YQEcUY52MytInVyBUXIIF7r9AdPuRvn0smhA\n" \
+                                     "mTEBbE8bxlbrgXPSeVIFkiZbcc2dxNLOI3cPQXppXiElxvi3/3r3R97CAHucWkWc\n" \
+                                     "Kk5GkNl1LNj/jO7M3GnrbOYV0KP/SAusVd/fJZ1CtlGjZpVgxdAi5yJ6UaXMhw==\n" \
+                                     "-----END CERTIFICATE-----\n";
+
+
+// change SendPushbulletKeepAliveRequest to false if you don't want to send PushBullet Keep Alive Requests
+// Keep alive requests helps keep your Pushbullet account alive for up to 30 days from its last use
+
+bool  SendPushbulletKeepAliveRequest = true;
+const char* KeepAliveHost = "zebra.pushbullet.com";
+const char* Pushbullet_KeepAlive_root_ca = "-----BEGIN CERTIFICATE-----\n" \
+    "MIIEZTCCA02gAwIBAgIQQAF1BIMUpMghjISpDBbN3zANBgkqhkiG9w0BAQsFADA/\n" \
+    "MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\n" \
+    "DkRTVCBSb290IENBIFgzMB4XDTIwMTAwNzE5MjE0MFoXDTIxMDkyOTE5MjE0MFow\n" \
+    "MjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUxldCdzIEVuY3J5cHQxCzAJBgNVBAMT\n" \
+    "AlIzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwIVKMz2oJTTDxLs\n" \
+    "jVWSw/iC8ZmmekKIp10mqrUrucVMsa+Oa/l1yKPXD0eUFFU1V4yeqKI5GfWCPEKp\n" \
+    "Tm71O8Mu243AsFzzWTjn7c9p8FoLG77AlCQlh/o3cbMT5xys4Zvv2+Q7RVJFlqnB\n" \
+    "U840yFLuta7tj95gcOKlVKu2bQ6XpUA0ayvTvGbrZjR8+muLj1cpmfgwF126cm/7\n" \
+    "gcWt0oZYPRfH5wm78Sv3htzB2nFd1EbjzK0lwYi8YGd1ZrPxGPeiXOZT/zqItkel\n" \
+    "/xMY6pgJdz+dU/nPAeX1pnAXFK9jpP+Zs5Od3FOnBv5IhR2haa4ldbsTzFID9e1R\n" \
+    "oYvbFQIDAQABo4IBaDCCAWQwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8E\n" \
+    "BAMCAYYwSwYIKwYBBQUHAQEEPzA9MDsGCCsGAQUFBzAChi9odHRwOi8vYXBwcy5p\n" \
+    "ZGVudHJ1c3QuY29tL3Jvb3RzL2RzdHJvb3RjYXgzLnA3YzAfBgNVHSMEGDAWgBTE\n" \
+    "p7Gkeyxx+tvhS5B1/8QVYIWJEDBUBgNVHSAETTBLMAgGBmeBDAECATA/BgsrBgEE\n" \
+    "AYLfEwEBATAwMC4GCCsGAQUFBwIBFiJodHRwOi8vY3BzLnJvb3QteDEubGV0c2Vu\n" \
+    "Y3J5cHQub3JnMDwGA1UdHwQ1MDMwMaAvoC2GK2h0dHA6Ly9jcmwuaWRlbnRydXN0\n" \
+    "LmNvbS9EU1RST09UQ0FYM0NSTC5jcmwwHQYDVR0OBBYEFBQusxe3WFbLrlAJQOYf\n" \
+    "r52LFMLGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjANBgkqhkiG9w0B\n" \
+    "AQsFAAOCAQEA2UzgyfWEiDcx27sT4rP8i2tiEmxYt0l+PAK3qB8oYevO4C5z70kH\n" \
+    "ejWEHx2taPDY/laBL21/WKZuNTYQHHPD5b1tXgHXbnL7KqC401dk5VvCadTQsvd8\n" \
+    "S8MXjohyc9z9/G2948kLjmE6Flh9dDYrVYA9x2O+hEPGOaEOa1eePynBgPayvUfL\n" \
+    "qjBstzLhWVQLGAkXXmNs+5ZnPBxzDJOLxhF2JIbeQAcH5H0tZrUlo5ZYyOqA7s9p\n" \
+    "O5b85o3AM/OJ+CktFBQtfvBhcJVd9wvlwPsk+uyOy2HI7mNxKKgsBTt375teA2Tw\n" \
+    "UdHkhVNcsAKX1H7GNNLOEADksd86wuoXvg==\n" \
+    "-----END CERTIFICATE-----\n";
 
 bool Always_Confirm_Status = false;
 bool Report_via_Push = false;
@@ -203,7 +270,7 @@ void Setup_WiFi() {
   while (notyetconnected)
   {
 
-    WiFi.mode(WIFI_STA); 
+    WiFi.mode(WIFI_STA);
     WiFi.begin(wifi_name, wifi_pass);
     delay(1000);
 
@@ -292,15 +359,70 @@ void Setup_OTAUpdate() {
 
 //*****************  every 24 hours send a request to keep the Pushbullet account alive (with out this it would expire every 30 days)
 
-void KeepPushBulletAccountAlive()
+void KeepPushBulletAccountAlive(bool DoCheckNow)
 {
 
-  secondsSinceLastKeepAliveRequest = now() - LastKeepAliveRequest;
+  if (SendPushbulletKeepAliveRequest) {
 
-  if ( secondsSinceLastKeepAliveRequest > TwentyFourHours ) {
+    secondsSinceLastKeepAliveRequest = now() - LastKeepAliveRequest;
 
-    PushbulletStayAlive();
-    LastKeepAliveRequest = now();
+    if ( ( secondsSinceLastKeepAliveRequest > TwentyFourHours ) || (DoCheckNow) ) {
+
+      LastKeepAliveRequest = now();
+
+      Serial.print("Sending Pushbullet keep alive request ");
+
+      WiFiClientSecure client;
+      client.setCACert(Pushbullet_KeepAlive_root_ca);
+
+      if (!client.connect(KeepAliveHost, https_port)) {
+        Serial.println(" Connection failed (check point 4)");
+        return;
+      }
+
+      String Pushbullet_Message_Out = " { \"name\": \"" + PushBullet_KeepAlive_ID + "\", \"user_iden\": \"" + My_PushBullet_Client_ID  + "\" }";
+
+      client.println("POST / HTTP/1.1");
+      client.println("Host: " + String(host));
+      client.println("Authorization: Bearer " + My_PushBullet_Access_Token);
+      client.println("Content-Type: application/json");
+      client.println("Content-Length: " + String(Pushbullet_Message_Out.length()));
+      client.println();
+      client.println(Pushbullet_Message_Out);
+
+      int WaitLimit = 0;
+      while ((!client.available()) && (WaitLimit < 250)) {
+        delay(50); //
+        WaitLimit++;
+      }
+
+      String Response = "";
+      WaitLimit = 0;
+      while ( (client.connected()) && (WaitLimit < 250) ) {
+        String line = client.readStringUntil('\n');
+        if (line == "\r") {
+          // retrieved header lines can be ignored
+          break;
+        }
+        WaitLimit++;
+      }
+
+      while (client.available()) {
+        char c = client.read();
+        Response += c;
+      }
+
+      client.stop();
+
+      if (Response == "{}") {
+        Serial.println("succeeded");
+      }
+      else {
+        Serial.println("failed");
+        Serial.println(Response);
+      }
+
+    }
 
   }
 
@@ -315,9 +437,9 @@ void Setup_PushBullet() {
 
   webSocket.onEvent(webSocketEvent);      // event handler
   webSocket.setReconnectInterval(5000);   // try ever 5000 again if connection has failed
-  
+
   GetPushbulletClientID();
-  PushbulletStayAlive(); 
+  KeepPushBulletAccountAlive(true);
 
 }
 
@@ -332,6 +454,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
 
     case WStype_CONNECTED:
+      webSocket.sendTXT("Connected");
       Serial.println("Pushbullet connection successful!");
       Serial.println();
       break;
@@ -353,8 +476,10 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         if ((jsonDocument["type"] == "tickle") && (jsonDocument["subtype"] == "push")) {
 
           WiFiClientSecure client1;
-          if (!client1.connect(host, https_Port)) {
-            Serial.println("Connection failed");
+          client1.setCACert(Pushbullet_API_root_ca);
+
+          if (!client1.connect(host, https_port)) {
+            Serial.println("Connection failed (check point 1)");
             return;
           }
 
@@ -484,9 +609,10 @@ void PushbulletDismissPush(String Push_Iden) {
   Serial.println(" dismissing push");
 
   WiFiClientSecure client;
+  client.setCACert(Pushbullet_API_root_ca);
 
-  if (!client.connect(host, https_Port)) {
-    Serial.println(" connection failed");
+  if (!client.connect(host, https_port)) {
+    Serial.println(" Connection failed (check point 2)");
     return;
   }
 
@@ -538,85 +664,30 @@ void PushbulletDismissPush(String Push_Iden) {
 
 }
 
-
-
 void GetPushbulletClientID() {
 
-  WiFiClientSecure client1;
-  if (!client1.connect(host, https_Port)) {
-    Serial.println("Connection failed");
+  WiFiClientSecure client;
+
+  client.setCACert(Pushbullet_API_root_ca);
+  if (!client.connect(host, https_port)) {
+    Serial.println("Connection failed (check point 3)");
     return;
   }
 
-  client1.println("GET /v2/users/me HTTP/1.1");
-  client1.println("Host: " + String(host));
-  client1.println("Authorization: Bearer " + My_PushBullet_Access_Token);
-  client1.println("Content-Type : application/json");
-  client1.println("Content-Length : 0");
-  client1.println();
+  client.println("GET /v2/users/me HTTP/1.1");
+  client.println("Host: " + String(host));
+  client.println("Authorization: Bearer " + My_PushBullet_Access_Token);
+  client.println("Content-Type : application/json");
+  client.println("Content-Length : 0");
+  client.println();
 
   // Serial.print(" waiting for the details ");
   int WaitLimit = 0;
-  while ((!client1.available()) && (WaitLimit < 250)) {
+  while ((!client.available()) && (WaitLimit < 250)) {
     delay(50);
     WaitLimit++;
   }
 
-  WaitLimit = 0;
-  while ( (client1.connected()) && (WaitLimit < 250) ) {
-    String line = client1.readStringUntil('\n');
-    if (line == "\r") {
-      // retrieved header lines can be ignored
-      break;
-    }
-    WaitLimit++;
-  }
-
-  String Response = "";
-  while (client1.available()) {
-    char c = client1.read();
-    Response += c;
-  }
-
-  // Serial.println(Response);
-
-  client1.stop();
-
-  DynamicJsonDocument jsonDocument(4096);
-  deserializeJson(jsonDocument, Response);
-  String cid = jsonDocument["iden"];
-  My_PushBullet_Client_ID = cid;
-
-}
-
-void PushbulletStayAlive() {
-
-  Serial.print("stay alive request ");
-
-  WiFiClientSecure client;
-
-  if (!client.connect(KeepAliveHost, https_Port)) {
-    Serial.println(" connection failed");
-    return;
-  }
-
-  String Pushbullet_Message_Out = " { \"name\": \"" + PushBullet_KeepAlive_ID +"\", \"user_iden\": \"" + My_PushBullet_Client_ID  + "\" }";
-
-  client.println("POST / HTTP/1.1");
-  client.println("Host: " + String(host));
-  client.println("Authorization: Bearer " + My_PushBullet_Access_Token);
-  client.println("Content-Type: application/json");
-  client.println("Content-Length: " + String(Pushbullet_Message_Out.length()));
-  client.println();
-  client.println(Pushbullet_Message_Out);
-
-  int WaitLimit = 0;
-  while ((!client.available()) && (WaitLimit < 250)) {
-    delay(50); //
-    WaitLimit++;
-  }
-
-  String Response = "";
   WaitLimit = 0;
   while ( (client.connected()) && (WaitLimit < 250) ) {
     String line = client.readStringUntil('\n');
@@ -627,22 +698,23 @@ void PushbulletStayAlive() {
     WaitLimit++;
   }
 
+  String Response = "";
   while (client.available()) {
     char c = client.read();
     Response += c;
   }
 
+  // Serial.println(Response);
+
   client.stop();
 
-  if (Response == "{}") {
-    Serial.println("succeeded");
-  }
-  else {
-    Serial.println("failed");
-    Serial.println(Response);
-  }
+  DynamicJsonDocument jsonDocument(4096);
+  deserializeJson(jsonDocument, Response);
+  String cid = jsonDocument["iden"];
+  My_PushBullet_Client_ID = cid;
 
 }
+
 
 /*
   void Check_a_Button(int Button_Number, int Pressed) {
@@ -719,7 +791,7 @@ void Setup_FromEEPROM() {
 
   EEPROM.begin(EEPROM_SIZE);
 
-  String CurrentMessageSavedInEEPROM;  
+  String CurrentMessageSavedInEEPROM;
   CurrentMessageSavedInEEPROM = readEEPROMString(0);
 
   DisplayMessageOnMax("Setup complete", true);
@@ -730,33 +802,6 @@ void Setup_FromEEPROM() {
 
 }
 
-void setup()
-{
-
-  Serial.begin(115200);
-
-  Setup_Time();
-  Setup_Max7219();
-  DisplayMessageOnMax(ProgramID, true);
-  // Setup_Buttons();
-  Setup_WiFi();
-  Setup_OTAUpdate();
-  Setup_PushBullet();
-  Setup_FromEEPROM();
-
-}
-
-void loop() {
-
-  Check_Connection();
-  Check_Pushbullet();
-  PushbulletStayAlive(); 
-  ArduinoOTA.handle();
-  // Check_Buttons();
-  webSocket.loop();
-  FullyScrollMessageOnMax();
-
-}
 
 void DisplayMessageOnMax(String message, bool ClearMessageOnceDisplayed) {
 
@@ -786,5 +831,33 @@ void FullyScrollMessageOnMax() {
     P.setSpeed(slider_scroll_speed);
   }
   P.displayReset();
+
+}
+
+void setup()
+{
+
+  Serial.begin(115200);
+
+  Setup_Time();
+  Setup_Max7219();
+  DisplayMessageOnMax(ProgramID, true);
+  // Setup_Buttons();
+  Setup_WiFi();
+  Setup_OTAUpdate();
+  Setup_PushBullet();
+  Setup_FromEEPROM();
+
+}
+
+void loop() {
+
+  Check_Connection();
+  Check_Pushbullet();
+  KeepPushBulletAccountAlive(false);
+  ArduinoOTA.handle();
+  // Check_Buttons();
+  webSocket.loop();
+  FullyScrollMessageOnMax();
 
 }

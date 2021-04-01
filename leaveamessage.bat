@@ -11,7 +11,7 @@ set year=%dt:~0,4%
 set month=%dt:~4,2%
 if %month%==01 set monthname=January
 if %month%==02 set monthname=Febuary
-if %month%==03 set monthname==March
+if %month%==03 set monthname=March
 if %month%==04 set monthname=April
 if %month%==05 set monthname=May
 if %month%==06 set monthname=June
