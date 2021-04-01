@@ -82,7 +82,7 @@ const int https_port = 443;
 String My_PushBullet_Client_ID = "";
 
 // to get a certificate, use a program called openssl
-// to get oppenssl, download Windows executable from: https://kb.firedaemon.com/support/solutions/articles/4000121705#Download-OpenSSL
+// for more information please see this video: https://youtu.be/pLmHELQfkx0
 // here is the command to get the certificate for api.pushbullet.com
 //      openssl s_client -showcerts -connect api.pushbullet.com:443
 // use the second certificate displayed
