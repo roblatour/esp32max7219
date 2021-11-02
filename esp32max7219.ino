@@ -75,7 +75,7 @@ const String Pushbullet_Note_Title_To_Restart  = "Reset the ESP32 message board 
 
 const String PushBullet_Server = "stream.pushbullet.com";
 const String PushBullet_Server_Directory = "/websocket/";
-const String PushBullet_KeepAlive_ID = "rob_messages_active"; // <*** do not change this for this program; special code Pushbullet has provide for use with this program only; used to prevent accounts from expiring for 30 days
+const String PushBullet_KeepAlive_ID = "rob_messages_active"; // <*** do not change this, it is a special code Pushbullet has provided for use with this program only; used to prevent accounts from expiring for 30 days
 const int PushBullet_Server_Port = 443;
 const int https_port = 443;
 
@@ -127,32 +127,20 @@ const char* Pushbullet_API_root_ca = "-----BEGIN CERTIFICATE-----\n" \
 
 bool  SendPushbulletKeepAliveRequest = true;
 const char* KeepAliveHost = "zebra.pushbullet.com";
-const char* Pushbullet_KeepAlive_root_ca = "-----BEGIN CERTIFICATE-----\n" \
-    "MIIEZTCCA02gAwIBAgIQQAF1BIMUpMghjISpDBbN3zANBgkqhkiG9w0BAQsFADA/\n" \
-    "MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\n" \
-    "DkRTVCBSb290IENBIFgzMB4XDTIwMTAwNzE5MjE0MFoXDTIxMDkyOTE5MjE0MFow\n" \
-    "MjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUxldCdzIEVuY3J5cHQxCzAJBgNVBAMT\n" \
-    "AlIzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuwIVKMz2oJTTDxLs\n" \
-    "jVWSw/iC8ZmmekKIp10mqrUrucVMsa+Oa/l1yKPXD0eUFFU1V4yeqKI5GfWCPEKp\n" \
-    "Tm71O8Mu243AsFzzWTjn7c9p8FoLG77AlCQlh/o3cbMT5xys4Zvv2+Q7RVJFlqnB\n" \
-    "U840yFLuta7tj95gcOKlVKu2bQ6XpUA0ayvTvGbrZjR8+muLj1cpmfgwF126cm/7\n" \
-    "gcWt0oZYPRfH5wm78Sv3htzB2nFd1EbjzK0lwYi8YGd1ZrPxGPeiXOZT/zqItkel\n" \
-    "/xMY6pgJdz+dU/nPAeX1pnAXFK9jpP+Zs5Od3FOnBv5IhR2haa4ldbsTzFID9e1R\n" \
-    "oYvbFQIDAQABo4IBaDCCAWQwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8E\n" \
-    "BAMCAYYwSwYIKwYBBQUHAQEEPzA9MDsGCCsGAQUFBzAChi9odHRwOi8vYXBwcy5p\n" \
-    "ZGVudHJ1c3QuY29tL3Jvb3RzL2RzdHJvb3RjYXgzLnA3YzAfBgNVHSMEGDAWgBTE\n" \
-    "p7Gkeyxx+tvhS5B1/8QVYIWJEDBUBgNVHSAETTBLMAgGBmeBDAECATA/BgsrBgEE\n" \
-    "AYLfEwEBATAwMC4GCCsGAQUFBwIBFiJodHRwOi8vY3BzLnJvb3QteDEubGV0c2Vu\n" \
-    "Y3J5cHQub3JnMDwGA1UdHwQ1MDMwMaAvoC2GK2h0dHA6Ly9jcmwuaWRlbnRydXN0\n" \
-    "LmNvbS9EU1RST09UQ0FYM0NSTC5jcmwwHQYDVR0OBBYEFBQusxe3WFbLrlAJQOYf\n" \
-    "r52LFMLGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjANBgkqhkiG9w0B\n" \
-    "AQsFAAOCAQEA2UzgyfWEiDcx27sT4rP8i2tiEmxYt0l+PAK3qB8oYevO4C5z70kH\n" \
-    "ejWEHx2taPDY/laBL21/WKZuNTYQHHPD5b1tXgHXbnL7KqC401dk5VvCadTQsvd8\n" \
-    "S8MXjohyc9z9/G2948kLjmE6Flh9dDYrVYA9x2O+hEPGOaEOa1eePynBgPayvUfL\n" \
-    "qjBstzLhWVQLGAkXXmNs+5ZnPBxzDJOLxhF2JIbeQAcH5H0tZrUlo5ZYyOqA7s9p\n" \
-    "O5b85o3AM/OJ+CktFBQtfvBhcJVd9wvlwPsk+uyOy2HI7mNxKKgsBTt375teA2Tw\n" \
-    "UdHkhVNcsAKX1H7GNNLOEADksd86wuoXvg==\n" \
-    "-----END CERTIFICATE-----\n";
+const char* Pushbullet_KeepAlive_root_ca = "-----BEGIN CERTIFICATE-----\n" \  	
+"MIIFFjCCAv6gAwIBAgIRAJErCErPDBinU/bWLiWnX1owDQYJKoZIhvcNAQELBQAw\n" \
+"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\n" \
+"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMjAwOTA0MDAwMDAw\n" \
+"WhcNMjUwOTE1MTYwMDAwWjAyMQswCQYDVQQGEwJVUzEWMBQGA1UEChMNTGV0J3Mg\n" \
+"RW5jcnlwdDELMAkGA1UEAxMCUjMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\n" \
+"AoIBAQC7AhUozPaglNMPEuyNVZLD+ILxmaZ6QoinXSaqtSu5xUyxr45r+XXIo9cP\n" \
+"R5QUVTVXjJ6oojkZ9YI8QqlObvU7wy7bjcCwXPNZOOftz2nwWgsbvsCUJCWH+jdx\n" \
+"sxPnHKzhm+/b5DtFUkWWqcFTzjTIUu61ru2P3mBw4qVUq7ZtDpelQDRrK9O8Zutm\n" \
+"NHz6a4uPVymZ+DAXXbpyb/uBxa3Shlg9F8fnCbvxK/eG3MHacV3URuPMrSXBiLxg\n" \
+"Z3Vms/EY96Jc5lP/Ooi2R6X/ExjqmAl3P51T+c8B5fWmcBcUr2Ok/5mzk53cU6cG\n" \
+"/kiFHaFpriV1uxPMUgP17VGhi9sVAgMBAAGjggEIMIIBBDAOBgNVHQ8BAf8EBAMC\n" \
+"AYYwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMBIGA1UdEwEB/wQIMAYB\n" \
+"-----END CERTIFICATE-----\n";
 
 bool Always_Confirm_Status = false;
 bool Report_via_Push = false;
@@ -489,12 +477,13 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             Serial.println("Connection failed (check point 1)");
             return;
           }
-
-          client1.println("GET /v2/pushes?limit=1 HTTP/1.1");
+         
+          client1.println("GET /v2/pushes?limit=1 HTTP/1.1");        
           client1.println("Host: " + String(host));
           client1.println("Authorization: Bearer " + My_PushBullet_Access_Token);
-          client1.println("Content-Type : application/json");
-          client1.println("Content-Length : 0");
+          client1.println("Content-Type: application/json");
+          client1.println("Content-Length: 0");
+
           client1.println();
 
           Serial.print(" waiting for the details ");
@@ -684,8 +673,8 @@ void GetPushbulletClientID() {
   client.println("GET /v2/users/me HTTP/1.1");
   client.println("Host: " + String(host));
   client.println("Authorization: Bearer " + My_PushBullet_Access_Token);
-  client.println("Content-Type : application/json");
-  client.println("Content-Length : 0");
+  client.println("Content-Type: application/json");
+  client.println("Content-Length: 0");
   client.println();
 
   // Serial.print(" waiting for the details ");
@@ -739,6 +728,9 @@ void GetPushbulletClientID() {
       while (digitalRead(Button_Number) == Pressed) {
         // wait until the button is released
       }
+
+      // added in to reset the msgboard
+      ESP.restart();
 
     }
   }
