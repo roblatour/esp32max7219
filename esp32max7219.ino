@@ -52,7 +52,7 @@ int slider_scroll_speed;
 char curMessage[BUF_SIZE] = { " " };  // used to hold current message
 
 //Program ID
-String ProgramID = "ESP32 message board v1.1";
+String ProgramID = "ESP32 message board v1.2";
 
 //Wifi
 /* WiFi network name and password */
@@ -64,7 +64,8 @@ unsigned long secondsSinceStartup;
 unsigned long TwoMinutes = 120000;
 
 // External button used to clear message
-//const int External_Button = 33;
+const int External_Button = 33;
+bool clear_messageboard_underway = false;
 
 // Pushbullet
 const String My_PushBullet_Access_Token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  // <********************************* change this
@@ -730,24 +731,32 @@ void GetPushbulletClientID() {
 
 void Check_a_Button(int Button_Number, int Pressed) {
 
-  // if the button is pressed, then reset the message board
-  if (digitalRead(Button_Number) == Pressed)
-  {
-    delay(20); // debounce time
-    if (digitalRead(Button_Number) == Pressed)
-    {
+  if( !clear_messageboard_underway ) {
+  
+     // if the button is pressed, then reset the message board
+     if (digitalRead(Button_Number) == Pressed) {
+    
+       delay(20); // debounce time
+       if (digitalRead(Button_Number) == Pressed) {
 
-      DisplayMessageOnMax("", true);         // clear display
-      delay(1000); // more debounce time
+         clear_messageboard_underway = true;
 
-      while (digitalRead(Button_Number) == Pressed) {
-        // wait until the button is released
-      }
+         Serial.println("clearing the messageboard");
+      
+         DisplayMessageOnMax("", true);         // clear message from memory
+         delay(1000); // more debounce time
 
-      // added in to reset the msgboard
-      ESP.restart();
+         while (digitalRead(Button_Number) == Pressed) {
+           // wait until the button is released
+         }
 
-    }
+        clear_messageboard_underway = false;
+
+        // added in to reset the msgboard
+        // ESP.restart();
+        
+       }
+     }
   }
 
 }
@@ -828,6 +837,7 @@ void DisplayMessageOnMax(String message, bool ClearMessageOnceDisplayed) {
   if (ClearMessageOnceDisplayed) {
     message = "";
     message.toCharArray(curMessage, 1);
+    P.displayClear();
     P.displayReset();
   }
 
@@ -842,6 +852,7 @@ void FullyScrollMessageOnMax() {
 
   while ( !P.displayAnimate() ) {
     P.setSpeed(slider_scroll_speed);
+    Check_Buttons();  // check if user wants to reset the message board
   }
   P.displayReset();
 
