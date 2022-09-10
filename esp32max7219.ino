@@ -259,13 +259,12 @@ void Setup_Max7219() {
 
 }
 
-/*
-  void Setup_Buttons() {
+
+void Setup_Buttons() {
 
   pinMode (External_Button, INPUT);
 
-  }
-*/
+}
 
 void Setup_WiFi() {
 
@@ -728,10 +727,10 @@ void GetPushbulletClientID() {
 }
 
 
-/*
-  void Check_a_Button(int Button_Number, int Pressed) {
 
-  // if the button is pressed, toggle the relay
+void Check_a_Button(int Button_Number, int Pressed) {
+
+  // if the button is pressed, then reset the message board
   if (digitalRead(Button_Number) == Pressed)
   {
     delay(20); // debounce time
@@ -751,15 +750,14 @@ void GetPushbulletClientID() {
     }
   }
 
-  }
+}
 
-  void Check_Buttons() {
+void Check_Buttons() {
 
   Check_a_Button(External_Button, HIGH);  // External button reads HIGH when pressed
 
-  }
+}
 
-*/
 
 void Check_Connection() {
 
@@ -857,7 +855,7 @@ void setup()
   Setup_Time();
   Setup_Max7219();
   DisplayMessageOnMax(ProgramID, true);
-  // Setup_Buttons();
+  Setup_Buttons();
   Setup_WiFi();
   Setup_OTAUpdate();
   Setup_PushBullet();
@@ -871,7 +869,7 @@ void loop() {
   Check_Pushbullet();
   KeepPushBulletAccountAlive(false);
   ArduinoOTA.handle();
-  // Check_Buttons();
+  Check_Buttons();
   webSocket.loop();
   FullyScrollMessageOnMax();
 
