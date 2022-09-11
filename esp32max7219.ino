@@ -64,7 +64,7 @@ unsigned long secondsSinceStartup;
 unsigned long TwoMinutes = 120000;
 
 // External button used to clear message
-const int External_Button = 33;
+const int External_Button = 19;
 bool clear_messageboard_underway = false;
 
 // Pushbullet
