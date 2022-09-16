@@ -35,4 +35,9 @@ SET "minute=%dt:~10,2%"
 
 set PushbulletAPI="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-curl -u %PushbulletAPI%:ROBSPC https://api.pushbullet.com/v2/pushes -d type=note -d title="Leave a message" -d body="%choice% - %monthname% %day%, %year% at %hour%:%minute%%ap%"
+rem curl -u %PushbulletAPI%:ROBSOFFICE https://api.pushbullet.com/v2/pushes -d type=note -d title="Leave a message" -d body="this is a test"
+curl -u %PushbulletAPI%:ROBSOFFICE https://api.pushbullet.com/v2/pushes -d type=note -d title="Leave a message" -d body="%choice% - %monthname% %day%, %year% at %hour%:%minute%%ap%"
+
+
+ 
+
