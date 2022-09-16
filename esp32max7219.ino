@@ -1,4 +1,4 @@
-// Copyright Rob Latour, 2021
+// Copyright Rob Latour, 2022
 
 // use board doit esp32 devkit v1
 
@@ -28,7 +28,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-#define MAX_DEVICES 12  // <********************************* Number of modules connected, you may need to change this
+#define MAX_DEVICES 13  // Number of modules connected **********************************
 
 //pins for a ESP32 Dev Kit V1
 #define CLK_PIN   18 // SCK (Brown)
@@ -52,7 +52,7 @@ int slider_scroll_speed;
 char curMessage[BUF_SIZE] = { " " };  // used to hold current message
 
 //Program ID
-String ProgramID = "ESP32 message board v1.2";
+String ProgramID = "ESP32 message board v1.3";
 
 //Wifi
 /* WiFi network name and password */
@@ -70,9 +70,9 @@ bool clear_messageboard_underway = false;
 // Pushbullet
 const String My_PushBullet_Access_Token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  // <********************************* change this
 
-const String Pushbullet_Note_Title_To_React_To = "Leave a message";
-const String Pushbullet_Note_Title_To_Clear    = "Clear the message";
-const String Pushbullet_Note_Title_To_Restart  = "Reset the ESP32 message board alpha 1 beta 2";  // triggered by "Restart the message board"
+const String Pushbullet_Title_To_React_To = "Leave a message";
+const String Pushbullet_Clear_Command     = "Clear the message board";
+const String Pushbullet_Restart_Command   = "Restart the message board";  
 
 const String PushBullet_Server = "stream.pushbullet.com";
 const String PushBullet_Server_Directory = "/websocket/";
@@ -558,26 +558,31 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
             Serial.print(" ");
 
-            if ( Title_Of_Incoming_Push == Pushbullet_Note_Title_To_Clear ) {
-              DisplayMessageOnMax("", true);
-              if (!Dismissed) {
-                PushbulletDismissPush(Current_Pushbullet_Iden);
-              }
-            }
+            if ( Title_Of_Incoming_Push == Pushbullet_Title_To_React_To ) {
 
-            if ( Title_Of_Incoming_Push == Pushbullet_Note_Title_To_React_To ) {
-              DisplayMessageOnMax(String(Body_Of_Incoming_Push), false);
-              if (!Dismissed) {
-                PushbulletDismissPush(Current_Pushbullet_Iden);
-              }
-            }
+               if ( Body_Of_Incoming_Push == Pushbullet_Restart_Command ) { 
+                             
+                  if (!Dismissed) {
+                      PushbulletDismissPush(Current_Pushbullet_Iden);
+                   };
+                   
+                   DisplayMessageOnMax("Restarting ...", true);
+                   
+                   ESP.restart();
+                   
+               };
 
-            if ( Title_Of_Incoming_Push == Pushbullet_Note_Title_To_Restart ) {
-              DisplayMessageOnMax("Restarting", true);
-              if (!Dismissed) {
-                PushbulletDismissPush(Current_Pushbullet_Iden);
-              }
-              ESP.restart();
+
+               if ( Body_Of_Incoming_Push == Pushbullet_Clear_Command) {
+                
+                 DisplayMessageOnMax("", true);
+                 
+               } else {
+                
+                 DisplayMessageOnMax(String(Body_Of_Incoming_Push), false);
+                 
+               };
+                                     
             }
 
           }
@@ -728,7 +733,6 @@ void GetPushbulletClientID() {
 }
 
 
-
 void Check_a_Button(int Button_Number, int Pressed) {
 
   if( !clear_messageboard_underway ) {
@@ -823,7 +827,6 @@ void Setup_FromEEPROM() {
   }
 
 }
-
 
 void DisplayMessageOnMax(String message, bool ClearMessageOnceDisplayed) {
 
