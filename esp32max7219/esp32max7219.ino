@@ -251,7 +251,7 @@ const char htmlDataEntryWindow[] PROGMEM = R"rawliteral(
      Message:<br>
      <input type="text" name="message" value="$MESSAGE$" width="340" maxlength="4095"><br>
      <br>
-     <input type="submit" name="clear" alt="Clear" value="Clear the message">&nbsp&nbsp&nbsp<input type="submit" name="update" alt="Update" value="Update the message"> 
+     <input type="button" name="clear" alt="Clear" value="Clear the message">&nbsp&nbsp&nbsp<input type="submit" name="update" alt="Update" value="Update the message"> 
 )rawliteral";
 const char* PARAM_INPUT_MESSAGE = "message";
 const char* PARAM_INPUT_CLEAR = "clear";
