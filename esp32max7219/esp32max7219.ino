@@ -38,7 +38,7 @@
 //
 //     2.4 To change the text on the scrolling message board
 //
-//         Method 1: browse to the address identified in step 2.1 above, enter the new text, and press ok
+//         Method 1: browse to the address identified in step 2.1 above, enter the new text, and click 'OK'
 //
 //         Method 2: send a Pushbullet push with the text you would like displayed
 //
@@ -46,11 +46,10 @@
 //
 //                   "Clear the message board"                  (this clears the message board's display)
 //                   "Restart the message board"                (this restarts the message board)
-//                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, Wifi Password, Pushbullet Access Token, and current message are stored
+//                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, Wifi Password, Pushbullet Access Token, and current message are stored)
 //
 //         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
-//
-//
+////
 //     2.5 To clear the text on the message board:
 //
 //         method 1:  Press and hold the external button for more than 5 seconds
