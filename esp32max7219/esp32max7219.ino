@@ -8,32 +8,32 @@
 //
 //   Before compiling and uploading to your ESP32, please review the key_settings.h file and make updates as you may like.
 //
-//   The user's WiFi Network name (SSID), Wifi password, and Pushbullet Access Token are not stored in this sketch nor the key_settings.h file.  
+//   The user's WiFi Network name (SSID), Wifi password, and Pushbullet Access Token are not stored in this sketch nor the key_settings.h file.
 //   Rather they are stored in non-volatile memory after being entered by the user via a web browser (see below).
-// 
+//
 // To operate:
 //
 //  1. Press and hold the external button for more than 10 seconds when the esp32 is powered on to trigger the process to reset your Wifi Credentials
 //     This should be done for initial setup, but may be done anytime afterwards if your Wifi Network name (SSID) or Wifi password change
 //
 //     1.1 The message board will prompt you to take three steps (which you can do this from your computer or cell phone):
-//         Step 1:  connect to Wifi network ScrollingMessageBoard 
+//         Step 1:  connect to Wifi network ScrollingMessageBoard
 //         Step 2:  browse to http://123.123.123.123
-//         Step 3:  enter your Wifi network information, and click 'OK'  
+//         Step 3:  enter your Wifi network information, and click 'OK'
 //
 //  2. Once connected to your Wifi network:
-//     
+//
 //     2.1 Press and hold the external button for 1 second to have the scrolling message board display the web address at which you can change/clear the text on the scrolling message board
 //         for example:  http://192.168.1.100
-// 
+//
 //     2.2 (Optional) To enter your Pushbullet Access Token, browse to the address identified in step 2.1 with "/pushbullet" (without the quotes) added after it,
 //         for example:  http://192.168.1.100/pushbullet
 //         For more information on Pushbullet setup please see: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
 //
-//     2.3 To change the text on the scrolling message board 
+//     2.3 To change the text on the scrolling message board
 //
 //         Method 1: browse to the address identified in step 2.1 above, enter the new text, and press ok
-//          
+//
 //         Method 2: send a Pushbullet push with the text you would like displayed
 //
 //         For both methods, here are some special messages (without the quotes) you can use to have special functions performed, these are:
@@ -46,31 +46,31 @@
 //
 //
 //     2.3 To clear the text on the message board:
-//         
+//
 //         method 1:  Press and hold the external button for more than 5 seconds
 //
 //         method 2:  Press the clear button on the web page identified in 2.1 above and click 'Clear'
-//   
+//
 //         method 3:  as described above, send a Pushbullet push with the message "Clear the memory of the message board" (without the quotes)
 //
 //
 // Final Notes:
 //
 //     If you are using Pushbullet, please note the two certificates stored in the pushbulletCertificates.h file both have expiry dates (as shown in the file)
-// 
-//     I will endeavor to update this file on Github in the future but there is more information on how you can do this yourself in the pushbulletCertificates.h file 
+//
+//     I will endeavor to update this file on Github in the future but there is more information on how you can do this yourself in the pushbulletCertificates.h file
 //     When the certificates expire they will need to be updated and this sketch recompiled and reloaded
-// 
+//
 //     I am already thinking of ways to make this more seamless in the future ... perhaps a future update?
 //
-//     Donations welcome at rlatour.com 
+//     Donations welcome at rlatour.com
 
 //
 // Board Manager: DOIT ESP32 DEVKIT V1
 //
 
 #include <Arduino.h>
-#include <ArduinoJson.h>        // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
+#include <ArduinoJson.h>  // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>  // https://github.com/esphome/ESPAsyncWebServer (put all files in src directory into the ESPAsyncWebServer directory)
 #include <WebSocketsClient.h>   // Websockets by Markus Sattler version 2.3.6 https://github.com/Links2004/arduinoWebSockets
@@ -106,7 +106,7 @@ bool buttonCheckUnderway = false;
 
 const int oneSecond = 1000;
 
-const unsigned long buttonDownThresholdForResetingWifiCredentials = 10 * oneSecond;  // 10 seconds 
+const unsigned long buttonDownThresholdForResetingNonVolatileMemory = 10 * oneSecond;  // 10 seconds
 bool manualResetRequested = false;
 
 const unsigned long buttonDownThresholdForRequestingTheMessageBoardAddress = 1 * oneSecond;  // 1 second
@@ -126,7 +126,6 @@ textPosition_t scrollAlign = PA_LEFT;
 int scrollSpeed = 1000;
 int scrollPause = 0;
 int slider_scroll_speed;
-bool immediatelyCancelScrollingMessage = false;
 
 #define BUF_SIZE EepromSize + 1       // Maximum characters in a message
 char curMessage[BUF_SIZE] = { " " };  // used to hold current message
@@ -135,9 +134,22 @@ char curMessage[BUF_SIZE] = { " " };  // used to hold current message
 String wifiSSID = "";
 String wifiPassword = "";
 
+// Time stuff
+const char* ntpServer = TIME_SERVER;
+const long gmtOffset_sec = 3600 * TIME_ZONE;
+const int daylightOffset_sec = 3600 * DAYLIGHT_SAVINGS_TIME;
+
+char timeHour[3] = "00";
+char timeMin[3] = "00";
+char timeSec[3];
+String timeAmPm;
+
 unsigned long LastTimeWiFiWasConnected;
 unsigned long secondsSinceStartup;
 unsigned long TwoMinutes = 120000;
+
+unsigned long nextTimeCheck = 0;
+const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
 
 // Special Commands
 const String clearTheMessageBoardCommand = CLEAR_THE_MESSAGE_BOARD_COMMAND;
@@ -204,6 +216,7 @@ String inputSSID = nothingWasEntered;
 String inputPassword = nothingWasEntered;
 
 String currentMessage = "";
+String currentMessageTimeAndDate = "";
 String currentSSID = "";
 String currentPassword = "";
 String currentPBAccessToken = "";
@@ -211,6 +224,10 @@ String currentPBAccessToken = "";
 String htmlFriendlyCurrentMessage = "";
 String htmlFriendlyFeedbackColor = "black";
 String htmlFriendlyFeedback = "";
+
+// note: in the htmlHeader the .form-action style is added to cause the button order to be reversed when presented.
+// this is used on the htmlDataEntryWindow to make the right most button (the 'Update' button) the default sumbit button.
+// without this the left most button would be the default submit button.
 
 const char htmlHeader[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <html>
@@ -225,6 +242,12 @@ const char htmlHeader[] PROGMEM = R"rawliteral(<!DOCTYPE html>
    padding: 10px;
    word-wrap: break-word;
  }
+ .form-actions {
+  display: flex;
+  flex-direction: row-reverse; /* reverse the elements inside */
+  justify-content: center;
+  align-items: center;
+}
 </style>
 </head>
 <body>
@@ -247,15 +270,25 @@ const char htmlFooter[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+
+// if you would rather the 'include time and date' checkbox set to checked as a default, use:
+// <input type="checkbox" id="includetime" name="includetime" checked><label for="includetime">Include $time$</label><br>
+
 const char htmlDataEntryWindow[] PROGMEM = R"rawliteral(
      Message:<br>
      <input type="text" name="message" value="$MESSAGE$" width="340" maxlength="4095"><br>
      <br>
-     <input type="button" name="clear" alt="Clear" value="Clear the message">&nbsp&nbsp&nbsp<input type="submit" name="update" alt="Update" value="Update the message"> 
+     <input type="checkbox" id="includetime" name="includetime"><label for="includetime">Include $time$</label><br>
+     <br> 
+     <div class="form-actions">
+         <input type="submit" name="update" alt="Update" value="Update">&nbsp&nbsp&nbsp<input type="submit" name="clear" alt="Clear" value="Clear">
+     </div>
 )rawliteral";
 const char* PARAM_INPUT_MESSAGE = "message";
 const char* PARAM_INPUT_CLEAR = "clear";
 const char* PARAM_INPUT_UPDATE = "update";
+const char* PARAM_INPUT_INCLUDETIME = "includetime";
+
 
 const char htmlConfirmCleared[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being cleared.<br>
@@ -263,6 +296,7 @@ const char htmlConfirmCleared[] PROGMEM = R"rawliteral(
      <input type="submit" name="messageclear" alt="OK" value="OK">  
 )rawliteral";
 const char* PARAM_MESSAGE_CLEAR = "messageclear";
+
 
 const char htmlConfirmUpdate[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being updated with the message:<br>
@@ -285,12 +319,14 @@ const char htmlGetPushbulletCredentials[] PROGMEM = R"rawliteral(
 const char* PARAM_INPUT_PUSHBULLET_UPDATE = "pbUpdate";
 const char* PARAM_INPUT_PUSHBULLET_ACCESS_TOKEN = "pbaccesstoken";
 
+
 const char htmlConfirmwPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been confirmed.<br>
      <br>
     <input type="submit" name="pbConfirm" alt="Confirmed" value="OK">    
 )rawliteral";
 const char* PARAM_PUSHBULLET_CONFIRM = "pbConfirm";
+
 
 const char htmlClearPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been cleared.<br>
@@ -300,6 +336,7 @@ const char htmlClearPusbulletAccessToken[] PROGMEM = R"rawliteral(
      Please close this window.    
 )rawliteral";
 
+
 const char htmlConfirmPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been updated.<br>
      <br>
@@ -307,6 +344,7 @@ const char htmlConfirmPusbulletAccessToken[] PROGMEM = R"rawliteral(
      <br>
      Please close this window.    
 )rawliteral";
+
 
 const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
      <br>
@@ -323,6 +361,7 @@ const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
      <input type="submit" alt="Update" value="OK"> 
 )rawliteral";
 
+
 const char htmlConfirmWIFI[] PROGMEM = R"rawliteral(
      The Wifi credentials entered are now being tested.<br>
      <br>
@@ -337,7 +376,6 @@ const char htmlConfirmWIFI[] PROGMEM = R"rawliteral(
      <br>
 )rawliteral";
 
-bool showingConfirmationWindow;
 
 bool setupComplete = false;
 
@@ -352,6 +390,16 @@ void SetupTime() {
 
   StartupTime = millis();
   LastTimePushbulletWasHeardFrom = millis();
+
+}
+
+void RefreshTimeOnceAWeek() {
+
+  // refresh the time once a week to allow for drift
+  if (millis() > nextTimeCheck) {
+    nextTimeCheck = millis() + oneWeekFromNow;
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  }
 }
 
 void resetMax7219(bool clear) {
@@ -370,11 +418,6 @@ void SetupMax7219() {
 
   P.begin();  // Setup Max 7219
   resetMax7219(false);
-}
-
-void IfNeededImmediatelyCancelScrollingMessage() {
-  if (!P.displayAnimate())
-    immediatelyCancelScrollingMessage = true;
 }
 
 void CheckAButton(int Button_Number, int Pressed) {
@@ -400,23 +443,18 @@ void CheckAButton(int Button_Number, int Pressed) {
           if (setupComplete) {
 
             if ((millis() - buttonDownTime) > buttonDownThresholdForRequestingTheMessageBoardAddress) {
-              // Serial.println("Message board address requested");
-              IfNeededImmediatelyCancelScrollingMessage();
+              Serial.println("Message board address requested");
               messageBoardsAddressRequested = true;
             };
 
             if ((millis() - buttonDownTime) > buttonDownThresholdForClearingTheMessageBoard) {
-              // Serial.println("Message board clear requested");
-              IfNeededImmediatelyCancelScrollingMessage();
-              messageBoardsAddressRequested = false;  // dor't report the address if a clear is requested
+              Serial.println("Message board clear requested");
               clearMessageRequested = true;
             };
 
           } else {
 
-            if ((millis() - buttonDownTime) > buttonDownThresholdForResetingWifiCredentials) {
-              // Serial.println("Message board Wifi credentials reset requested");
-              IfNeededImmediatelyCancelScrollingMessage();
+            if ((millis() - buttonDownTime) > buttonDownThresholdForResetingNonVolatileMemory) {
               manualResetRequested = true;
             }
           }
@@ -434,19 +472,20 @@ void CheckButton() {
 
 void FullyScrollMessageOnMax() {
 
-  while ((!P.displayAnimate()) && (!immediatelyCancelScrollingMessage)) {
+  while (!P.displayAnimate() && (!clearMessageRequested)) {
+
     P.setSpeed(slider_scroll_speed);  // need to keep this here or the scrolling of the display slows to a crawl
     CheckButton();                    // check if user wants to reset the message board
     webSocket.loop();
   };
 
   resetMax7219(false);
-  immediatelyCancelScrollingMessage = false;
 }
 
 void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
 
   if (message.length() != 0) {
+
     // display the message
 
     if (displayMessageOnlyOnce)
@@ -457,15 +496,25 @@ void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
     message.toCharArray(curMessage, message.length() + 1);
     P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
 
-    FullyScrollMessageOnMax();
+    // FullyScrollMessageOnMax(); - do not uncomment this line as it causes watchdog problems. Rather let the FullyScrollMessageOnMax(); coded in the loop() subroutine handle it
   };
 
   if (displayMessageOnlyOnce) {
+
+    // display the message once
+    FullyScrollMessageOnMax();
+
     // clear the display
     message = "";
     message.toCharArray(curMessage, 1);
     resetMax7219(true);
   }
+}
+
+void DisplayTheCurrentMessageOnMax(bool displayMessageOnlyOnce) {
+
+  String fullMessage = currentMessage + currentMessageTimeAndDate;
+  DisplayMessageOnMax(fullMessage, displayMessageOnlyOnce);
 }
 
 //*****************  every 24 hours send a request to keep the Pushbullet account alive (with out this it would expire every 30 days)
@@ -560,6 +609,8 @@ void SetupPushbullet() {
 
 void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 
+  // KeepTheWatchDogAtBay();
+
   LastTimePushbulletWasHeardFrom = millis();
 
   static String Last_Pushbullet_Iden;
@@ -597,7 +648,7 @@ void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
           if (!client1.connect(PUSHBULLET_API_HOST, https_port)) {
             Serial.println("Connection failed (WebSocketEvent)");
             //DisplayMessageOnMax("Pushbullet connection failed!", true);
-            break;   
+            break;
           }
 
           client1.println("GET /v2/pushes?limit=1 HTTP/1.1");
@@ -678,14 +729,12 @@ void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
                 ESP.restart();
               };
 
-              if (Body_Of_Incoming_Push == clearTheMessageBoardCommand) {
-                DisplayMessageOnMax(" ", true);
-                writeMessageToEEPROM("");
-
-              } else {
+              if (Body_Of_Incoming_Push == clearTheMessageBoardCommand)
+                clearMessageRequested = true;
+              else {
 
                 currentMessage = String(Body_Of_Incoming_Push);
-                DisplayMessageOnMax(currentMessage, false);
+                DisplayTheCurrentMessage();
                 writeMessageToEEPROM(currentMessage);
               };
             };
@@ -860,7 +909,7 @@ void writePBAccessTokenToEEPROM(String data) {
 
   const char fieldSeperator = 254;
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + data + fieldSeperator + currentMessage;
+  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + data + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
 
   writeEEPROMString(0, EEPROMData);
 
@@ -943,11 +992,12 @@ void loadDataFromEEPROM() {
 
   String CurrentDataSavedInEEPROM = readEEPROMString(0);
 
-  String EEPROMData[4] = { "", "", "", "" };
-  // EEPROMData[0] = SSIDStoredInEEPROM
-  // EEPROMData[1] = PasswordStoredInEEPROM
-  // EEPROMData[2] = PushbulletAccessTokenStoredInEEPROM
-  // EEPROMData[3] = MessageStoredInEEPROM
+  String EEPROMData[5] = { "", "", "", "", "" };
+  // EEPROMData[0] = SSID
+  // EEPROMData[1] = Password
+  // EEPROMData[2] = Pushbullet Access Token
+  // EEPROMData[3] = Message
+  // EEPROMData[4] = Message's Time and Date
 
   if (CurrentDataSavedInEEPROM.length() > 0) {
 
@@ -959,7 +1009,7 @@ void loadDataFromEEPROM() {
 
       c = CurrentDataSavedInEEPROM.charAt(i);
 
-      if ((c == fieldSeperator) && (field < 3))
+      if ((c == fieldSeperator) && (field < 4))
         field++;
       else
         EEPROMData[field] += String(c);
@@ -969,8 +1019,9 @@ void loadDataFromEEPROM() {
     wifiPassword = EEPROMData[1];
     pushbulletAccessToken = EEPROMData[2];
     currentMessage = EEPROMData[3];
+    currentMessageTimeAndDate = EEPROMData[4];
 
-    Serial.println("Loaded from EEPROM ... SSID: " + wifiSSID + " Password: " + wifiPassword + " Pushbullet Access Token: " + pushbulletAccessToken + " Message: " + currentMessage);
+    Serial.println("Loaded from EEPROM ... SSID: " + wifiSSID + " Password: " + wifiPassword + " Pushbullet Access Token: " + pushbulletAccessToken + " Message: " + currentMessage + " Message's Time and Date: " + currentMessageTimeAndDate);
   }
 }
 
@@ -1211,11 +1262,8 @@ void SetupWifiWithNewCredentials() {
         };
 
         html.replace("$errors$", errorMessage);
-        showingConfirmationWindow = false;
 
       } else {
-
-        showingConfirmationWindow = true;
 
         currentSSID = inputSSID;
         currentPassword = inputPassword;
@@ -1231,12 +1279,10 @@ void SetupWifiWithNewCredentials() {
       request->send(200, "text/html", html);
 
       resetMax7219(true);
-      immediatelyCancelScrollingMessage = true;
     });
 
-
     accessPointevents.onConnect([](AsyncEventSourceClient* client) {
-      client->send("hello!", NULL, millis(), 1000);
+      // client->send("hello!", NULL, millis(), 1000);
       Serial.println("Access Point server connected");
     });
 
@@ -1307,7 +1353,7 @@ void SetupWifiWithNewCredentials() {
 
       const char fieldSeperator = 254;
 
-      String EEPROMData = newSSID + fieldSeperator + newPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + currentMessage;
+      String EEPROMData = newSSID + fieldSeperator + newPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
 
       writeEEPROMString(0, EEPROMData);
 
@@ -1322,11 +1368,8 @@ void SetupWifiWithNewCredentials() {
   };
 };
 
-
 // ************************************************************************************************************************************************************
 void SetupWebServer() {
-
-  showingConfirmationWindow = false;
 
   server.onNotFound([](AsyncWebServerRequest* request) {
     Serial.println("Not found: " + String(request->url()));
@@ -1334,7 +1377,7 @@ void SetupWebServer() {
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
-    // present htmlGetPushbulletCredentials window
+    // present htmlDataEntryWindow window
 
     String html = String(htmlHeader);
 
@@ -1343,9 +1386,18 @@ void SetupWebServer() {
     // special handling for when a quote is used in the message
     const String quote = String('"');
     const String quoteCode = String("&quot;");
+
     String htmlFriendlyCurrentMessage = currentMessage;
+    htmlFriendlyCurrentMessage.trim();
     htmlFriendlyCurrentMessage.replace(quote, quoteCode);
+
     html.replace("$MESSAGE$", htmlFriendlyCurrentMessage);
+
+    if (TIME_FORMAT_OPTION > 3)
+      html.replace("$time$", "time and date");
+    else
+      html.replace("$time$", "time");
+
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
   });
@@ -1364,8 +1416,18 @@ void SetupWebServer() {
   server.on("/confirm_message_update", HTTP_GET, [](AsyncWebServerRequest* request) {
     // present htmlConfirmUpdate window
 
+    const String quote = String('"');
+    const String quoteCode = String("&quot;");
+
     String html = String(htmlHeader);
     html.concat(htmlConfirmUpdate);
+
+    String htmlFriendlyCurrentMessage = currentMessage;
+    htmlFriendlyCurrentMessage.trim();
+    htmlFriendlyCurrentMessage.replace(quote, quoteCode);
+
+    htmlFriendlyCurrentMessage.concat(currentMessageTimeAndDate);
+
     html.replace("$MESSAGE$", htmlFriendlyCurrentMessage);
 
     html.concat(htmlFooter);
@@ -1432,7 +1494,8 @@ void SetupWebServer() {
     String html = String(htmlHeader);
 
     if (request->hasParam(PARAM_INPUT_CLEAR)) {
-      immediatelyCancelScrollingMessage = true;
+      currentMessage = "";
+      resetMax7219(true);
       clearMessageRequested = true;
       request->redirect("/confirm_message_clear");
       return;
@@ -1456,30 +1519,32 @@ void SetupWebServer() {
       };
 
       if ((inputMessage.length() == 0) || (inputMessage == clearTheMessageBoardCommand)) {
-        immediatelyCancelScrollingMessage = true;
-        writeMessageToEEPROM(" ");
-        DisplayMessageOnMax(" ", true);
+        clearMessageRequested = true;
         request->redirect("/confirm_message_clear");
         return;
 
       } else {
 
+        if (request->hasParam(PARAM_INPUT_INCLUDETIME)) {
+
+          String inputTimeCheckboxString = "";
+          inputTimeCheckboxString = request->getParam(PARAM_INPUT_INCLUDETIME)->value();
+
+          if (inputTimeCheckboxString == "on") {
+            const char fieldSeperator = 254;
+            inputMessage.concat(fieldSeperator);
+            inputMessage.concat(" - ");
+            inputMessage.concat(GetFormatTimeandDate());
+          };
+        };
+
         writeMessageToEEPROM(inputMessage);  // save input message to eeprom and make it the current message
 
-        // special handling for when a quote is used in the message
-        const String quote = String('"');
-        const String quoteCode = String("&quot;");
-        htmlFriendlyCurrentMessage = currentMessage;
-        htmlFriendlyCurrentMessage.replace(quote, quoteCode);
-
-        immediatelyCancelScrollingMessage = true;
-
-        if (currentMessage == "")
-          DisplayMessageOnMax(" ", true);
-        else
-          DisplayMessageOnMax(currentMessage, false);
-
         request->redirect("/confirm_message_update");
+
+        resetMax7219(true);
+        DisplayTheCurrentMessage();
+
         return;
       };
     };
@@ -1523,12 +1588,10 @@ void SetupWebServer() {
         };
       };
     };
-
-
   });
 
   events.onConnect([](AsyncEventSourceClient* client) {
-    client->send("hello!", NULL, millis(), 1000);
+    // client->send("hello!", NULL, millis(), 1000);
     Serial.println("Webserver connected");
   });
 
@@ -1595,7 +1658,7 @@ void SetupFinalDisplays() {
 
   DisplayMessageBoardsAddressAsNeeded();
 
-  DisplayCurrentMessage();
+  DisplayTheCurrentMessage();
 }
 
 
@@ -1612,9 +1675,9 @@ void CheckWifiConnection() {
   }
 }
 
-void DisplayCurrentMessage() {
+void DisplayTheCurrentMessage() {
   if (currentMessage.length() > 0)
-    DisplayMessageOnMax(currentMessage, false);
+    DisplayTheCurrentMessageOnMax(false);
 };
 
 void ClearDisplayAsNeeded() {
@@ -1623,7 +1686,9 @@ void ClearDisplayAsNeeded() {
     Serial.println("Clearing the message board");
     writeMessageToEEPROM(" ");
     DisplayMessageOnMax(" ", true);
+
     clearMessageRequested = false;
+    messageBoardsAddressRequested = false;  // if message was cleared ignore request to display the message board's address
   };
 }
 
@@ -1638,8 +1703,196 @@ void DisplayMessageBoardsAddressAsNeeded() {
     messageBoardsAddressRequested = false;
 
     // if the message board was previousily displaying a message, resume it now
-    DisplayCurrentMessage();
+    DisplayTheCurrentMessage();
   };
+};
+
+
+String GetFormatTimeandDate() {
+
+  struct timeval tvTime;
+
+  gettimeofday(&tvTime, NULL);
+
+  int iTotal_seconds = tvTime.tv_sec;
+  struct tm* ptm = localtime((const time_t*)&iTotal_seconds);
+
+  int iYear = ptm->tm_year - 100;
+  int iMonth = ptm->tm_mon + 1;
+  int iDay = ptm->tm_mday;
+  int iHour = ptm->tm_hour;
+  int iMinute = ptm->tm_min;
+  int iSecond = ptm->tm_sec;
+  int iTenthOfASecond = tvTime.tv_usec / 100000;
+
+  String indicatorForAmPm = "";
+
+  bool FormatOptionIncludesTime = false;
+  bool FormatOptionIncludesDate = false;
+
+  if (SHOW_TIME_IN_12_HOUR_FORMAT) {
+
+    if (iHour < 12)
+      indicatorForAmPm = " a.m.";
+    else
+      indicatorForAmPm = " p.m.";
+
+    if (iHour > 12)
+      iHour -= 12;
+  };
+
+  char buffer1[10];
+  char buffer2[10];
+
+  switch (TIME_FORMAT_OPTION) {
+      // 1: HH:MM
+      // 2: HH:MM:SS
+      // 3: HH:MM:SS.T
+      // 4: MM/DD
+      // 4: YY/MM/DD
+      // 6: MM/DD/YY
+      // 7: HH:MM & MM/DD
+      // 8: HH:MM & YY/MM/DD
+      // 9: HH:MM & MM/DD/YY
+      // 10: HH:MM:SS & YY/MM/DD
+      // 11: HH:MM:SS & MM/DD/YY
+
+    case 1:
+      {
+        if (iSecond & 0x01) {
+          sprintf(buffer1, "%02d %02d", iHour, iMinute);
+        } else {
+          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+        };
+        FormatOptionIncludesTime = true;
+        break;
+      }
+
+    case 2:
+      {
+        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+        FormatOptionIncludesTime = true;
+        break;
+      }
+
+    case 3:
+      {
+        sprintf(buffer1, "%02d:%02d:%02d.%01d", iHour, iMinute, iSecond, iTenthOfASecond);
+        FormatOptionIncludesTime = true;
+        break;
+      }
+
+    case 4:
+      {
+        sprintf(buffer1, "%02d/%02d", iMonth, iDay);
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 5:
+      {
+        sprintf(buffer1, "%02d/%02d/%02d", iYear, iMonth, iDay);
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 6:
+      {
+        sprintf(buffer1, "%02d/%02d/%02d", iMonth, iDay, iYear);
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 7:
+      {
+        if (iSecond & 0x01) {
+          sprintf(buffer1, "%02d %02d", iHour, iMinute);
+        } else {
+          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+        };
+        sprintf(buffer2, "%02d/%02d", iMonth, iDay);
+        FormatOptionIncludesTime = true;
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 8:
+      {
+        if (iSecond & 0x01) {
+          sprintf(buffer1, "%02d %02d", iHour, iMinute);
+        } else {
+          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+        };
+        sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
+        FormatOptionIncludesTime = true;
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 9:
+      {
+        if (iSecond & 0x01) {
+          sprintf(buffer1, "%02d %02d", iHour, iMinute);
+        } else {
+          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+        };
+        sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
+        FormatOptionIncludesTime = true;
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 10:
+      {
+        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+        sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
+        FormatOptionIncludesTime = true;
+        FormatOptionIncludesDate = true;
+        break;
+      }
+
+    case 11:
+      {
+        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+        sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
+        FormatOptionIncludesTime = true;
+        FormatOptionIncludesDate = true;
+        break;
+      }
+  }
+
+  if (FormatOptionIncludesTime) {
+
+    if (SHOW_TIME_IN_12_HOUR_FORMAT) {
+
+      if ((buffer1[0] == '0') & (buffer1[1] == '0')) {
+        buffer1[0] = '1';
+        buffer1[1] = '2';
+      };
+
+      if (buffer1[0] == '0')
+        buffer1[0] = ' ';
+    };
+  };
+
+  String TimeString = String(buffer1) + indicatorForAmPm;
+  String DateString = String(buffer2);
+
+  String returnResult = "";
+  if (FormatOptionIncludesTime) {
+    returnResult.concat(TimeString);
+    returnResult.trim();
+  };
+
+  if (FormatOptionIncludesTime && FormatOptionIncludesDate)
+    returnResult.concat(" ");
+
+  if (FormatOptionIncludesDate) {
+    returnResult.concat(DateString);
+    returnResult.trim();
+  };
+
+  return returnResult;
 };
 
 void setup() {
@@ -1671,6 +1924,7 @@ void loop() {
   CheckPushbulletConnection();
   KeepPushbulletAccountAlive(false);
   ArduinoOTA.handle();
+  RefreshTimeOnceAWeek();
 
   CheckButton();
   ClearDisplayAsNeeded();
@@ -1679,4 +1933,4 @@ void loop() {
   CheckForNewMessageFromPushbullet();
 
   FullyScrollMessageOnMax();
-}
+};

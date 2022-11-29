@@ -20,5 +20,24 @@
 #define SEND_PUSHBULLET_KEEP_ALIVE_REQUEST                             true                                    // normally set to true; set to false when testing
 #define REBOOT_AFTER_THIS_MANY_MINUTES_WITHOUT_HEARING_FROM_PUSHBULLET 15
 
+#define TIME_SERVER                                                    "pool.ntp.org"                          // ntp time server
+#define TIME_ZONE                                                      -5                                      // hour offset from GMT
+#define DAYLIGHT_SAVINGS_TIME                                          1                                       // hour offset for Daylight Savings time (0, .5, 1)
+#define SHOW_TIME_IN_12_HOUR_FORMAT                                    true                                    // if true show time in 12 hour format, if false show time in 24 hour format
+#define TIME_FORMAT_OPTION                                             2                                       // Options are:
+                                                                                                               //   1: HH:MM
+                                                                                                               //   2: HH:MM:SS
+                                                                                                               //   3: HH:MM:SS.T
+                                                                                                               //   4: MM/DD
+                                                                                                               //   5: YY/MM/DD
+                                                                                                               //   6: MM/DD/YY
+                                                                                                               //   7: HH:MM MM/DD
+                                                                                                               //   8: HH:MM YY/MM/DD
+                                                                                                               //   9: HH:MM MM/DD/YY
+                                                                                                               //   10: HH:MM:SS YY/MM/DD
+                                                                                                               //   11: HH:MM:SS & MM/DD/YY
+
+
+
 #define SECRET_OTA_HostName                                            "ESP32MsgBoard"                         // Over The Air (OTA) update host name
 #define SECRET_OTA_PASSWORD                                            "MsgBoard"                              // OTA password
