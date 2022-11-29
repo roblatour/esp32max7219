@@ -40,12 +40,14 @@ To operate:
 
          Method 2: send a Pushbullet push with the text you would like displayed
 
-         For both methods, here are some special messages (without the quotes) you can use to have special functions performed, these are:
+         For both methods, here are some special messages (without the quotes) you can use to have special functions performed, 
+		 these are:
 
-                   "Clear the message board"                  (this clears the message board's display)
-                   "Restart the message board"                (this restarts the message board)
-                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, 
-				                                               Wifi Password, Pushbullet Access Token, and current message are stored)
+                   "Clear the message board"                  (clears the message board's display)
+                   "Restart the message board"                (restarts the message board)
+                   "Clear the memory of the message board"    (clears the non-volatile memory in which the Wifi SSID, 
+				                                              Wifi Password, Pushbullet Access Token, and current
+ 															  message values are stored)
 
          Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 
@@ -70,7 +72,7 @@ To operate:
 
      I am already thinking of ways to make this more seamless in the future ... perhaps a future update?
 
-     Donations welcome at https://rlatour.com
+     Donations welcome at https://rlatour.com/
 
 
 For more information please see:
