@@ -44,7 +44,8 @@ To operate:
 
                    "Clear the message board"                  (this clears the message board's display)
                    "Restart the message board"                (this restarts the message board)
-                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, Wifi Password, Pushbullet Access Token, and current message are stored)
+                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, 
+				                                               Wifi Password, Pushbullet Access Token, and current message are stored)
 
          Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 
@@ -59,14 +60,17 @@ To operate:
 
  Final Notes:
 
-     If you are using Pushbullet, please note the two certificates stored in the pushbulletCertificates.h file both have expiry dates (as shown in the file)
+     If you are using Pushbullet, please note the two certificates stored in the pushbulletCertificates.h file
+	 both have expiry dates (as shown in the file)
 
-     I will endeavor to update this file on Github in the future but there is more information on how you can do this yourself in the pushbulletCertificates.h file
+     I will endeavor to update this file on Github in the future but there is more information on how you can
+	 do this yourself in the pushbulletCertificates.h file
+	 
      When the certificates expire they will need to be updated and this sketch recompiled and reloaded
 
      I am already thinking of ways to make this more seamless in the future ... perhaps a future update?
 
-     Donations welcome at rlatour.com
+     Donations welcome at https://rlatour.com
 
 
 For more information please see:
