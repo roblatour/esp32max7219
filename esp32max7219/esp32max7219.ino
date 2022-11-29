@@ -26,11 +26,17 @@
 //     2.1 Press and hold the external button for 1 second to have the scrolling message board display the web address at which you can change/clear the text on the scrolling message board
 //         for example:  http://192.168.1.100
 //
-//     2.2 (Optional) To enter your Pushbullet Access Token, browse to the address identified in step 2.1 with "/pushbullet" (without the quotes) added after it,
+//     2.3 (Optional) To enter a password for updating the message on the Scrolling Message Board, browse to the address identified in step 2.1 with "/password" (without the quotes) added after it,
+//         for example:  http://192.168.1.100/password
+//         To start, the current password is blank, that is to say nothing is entered in the current password box
+//         If the current password is changed from being blank to something else, it can later be changed back to being blank by leaving the new and confirmed new passwords as blank when updating the password
+//         If the current password is not blank, the user will need to enter it to to change the text of the scrolling message board via the web interface (see 2.4 below)
+//
+//     2.3 (Optional) To enter your Pushbullet Access Token, browse to the address identified in step 2.1 with "/pushbullet" (without the quotes) added after it,
 //         for example:  http://192.168.1.100/pushbullet
 //         For more information on Pushbullet setup please see: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
 //
-//     2.3 To change the text on the scrolling message board
+//     2.4 To change the text on the scrolling message board
 //
 //         Method 1: browse to the address identified in step 2.1 above, enter the new text, and press ok
 //
@@ -45,11 +51,11 @@
 //         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 //
 //
-//     2.3 To clear the text on the message board:
+//     2.5 To clear the text on the message board:
 //
 //         method 1:  Press and hold the external button for more than 5 seconds
 //
-//         method 2:  Press the clear button on the web page identified in 2.1 above and click 'Clear'
+//         method 2:  Click the clear button on the web page identified in 2.1 above
 //
 //         method 3:  as described above, send a Pushbullet push with the message "Clear the memory of the message board" (without the quotes)
 //
@@ -70,8 +76,7 @@
 //
 
 #include <Arduino.h>
-#include <ArduinoJson.h>  // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
-#include <WiFi.h>
+#include <ArduinoJson.h>        // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 #include <ESPAsyncWebServer.h>  // https://github.com/esphome/ESPAsyncWebServer (put all files in src directory into the ESPAsyncWebServer directory)
 #include <WebSocketsClient.h>   // Websockets by Markus Sattler version 2.3.6 https://github.com/Links2004/arduinoWebSockets
 #include <MD_Parola.h>          // MD_Parol by magicDesigns version 3.6.2 https://github.com/MajicDesigns/MD_Parola
@@ -79,6 +84,7 @@
                                 // MD_MAXPanel by magicDesigns version 1.3.1 https://github.com/MajicDesigns/MD_MAXPanel
 #include <ArduinoSort.h>        // Arduino Sort by Emil Vikström version https://github.com/emilv/ArduinoSort
 #include <time.h>               // Time by Michael Margolis version 1.6.1
+#include <WiFi.h>
 #include <TimeLib.h>
 #include <EEPROM.h>
 #include <ArduinoOTA.h>
@@ -114,6 +120,8 @@ bool messageBoardsAddressRequested = false;                                     
 
 const unsigned long buttonDownThresholdForClearingTheMessageBoard = 5 * oneSecond;  // 5 seconds
 bool clearMessageRequested = false;
+bool restartRequested = false;
+bool EEPROMClearRequested = false;
 
 // Max7219 stuff
 const int numberOfMax7219Modules = NUMBER_OF_MAX7219_MODULES;
@@ -196,7 +204,6 @@ IPAddress accessPointIPMask(255, 255, 255, 0);
 AsyncWebServer accessPointServer(80);
 AsyncEventSource accessPointevents("/events");
 
-
 String availableNetworks = "";
 String lastSSIDSelected = "";
 String lastPasswordUsed = "";
@@ -224,6 +231,8 @@ String currentPBAccessToken = "";
 String htmlFriendlyCurrentMessage = "";
 String htmlFriendlyFeedbackColor = "black";
 String htmlFriendlyFeedback = "";
+
+String messageboardPassword = "";
 
 // note: in the htmlHeader the .form-action style is added to cause the button order to be reversed when presented.
 // this is used on the htmlDataEntryWindow to make the right most button (the 'Update' button) the default sumbit button.
@@ -280,6 +289,14 @@ const char htmlDataEntryWindow[] PROGMEM = R"rawliteral(
      <br>
      <input type="checkbox" id="includetime" name="includetime"><label for="includetime">Include $time$</label><br>
      <br> 
+     <div name="passwordneeded">
+        Update password:<br><input type="password" name="DEpassword" value="" width="340" maxlength="128"><br><br>
+     </div>
+     <div name="errormessages" style="color:$color$">
+       $errors$
+       <br>
+       <br>
+     </div>
      <div class="form-actions">
          <input type="submit" name="update" alt="Update" value="Update">&nbsp&nbsp&nbsp<input type="submit" name="clear" alt="Clear" value="Clear">
      </div>
@@ -287,8 +304,8 @@ const char htmlDataEntryWindow[] PROGMEM = R"rawliteral(
 const char* PARAM_INPUT_MESSAGE = "message";
 const char* PARAM_INPUT_CLEAR = "clear";
 const char* PARAM_INPUT_UPDATE = "update";
+const char* PARAM_INPUT_DATA_ENTRY_PASSWORD = "DEpassword";
 const char* PARAM_INPUT_INCLUDETIME = "includetime";
-
 
 const char htmlConfirmCleared[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being cleared.<br>
@@ -296,6 +313,21 @@ const char htmlConfirmCleared[] PROGMEM = R"rawliteral(
      <input type="submit" name="messageclear" alt="OK" value="OK">  
 )rawliteral";
 const char* PARAM_MESSAGE_CLEAR = "messageclear";
+
+
+const char htmlConfirmMemoryCleared[] PROGMEM = R"rawliteral(
+     The memory of the Scrolling Message Board will be cleared<br>    
+     and the Scrolling Message Board restarted.<br>
+     <br>
+     Please close this window.  
+)rawliteral";
+
+
+const char htmlConfirmRestart[] PROGMEM = R"rawliteral(
+     The Scrolling Message Board is being restarted.<br>
+     <br>
+     Please close this window.  
+)rawliteral";
 
 
 const char htmlConfirmUpdate[] PROGMEM = R"rawliteral(
@@ -346,6 +378,34 @@ const char htmlConfirmPusbulletAccessToken[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 
+const char htmlGetMessageboardPasswordCredentials[] PROGMEM = R"rawliteral(
+     <br>
+     Password change for webpage updates:<br>
+     <br>
+     Current password:&emsp;&emsp;&ensp;<input type="password" name="old" value=""><br>
+     <br>
+     New password:&emsp;&emsp;&emsp;&ensp;&nbsp;<input type="password" name="new1" value=""><br>
+     <br>
+     Confirm new password:&ensp;<input type="password" name="new2" value=""><br>
+     <br>
+     <div style="color:$color$">$errors$</div>
+     <br>     
+     <input type="submit" name="messageboardupdate" alt="Update" value="OK"> 
+)rawliteral";
+const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_OLD = "old";
+const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_1 = "new1";
+const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_2 = "new2";
+const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE = "messageboardupdate";
+
+
+const char htmlMessageboardPasswordConfirmed[] PROGMEM = R"rawliteral(
+     The Message Board's web update password has been changed.<br>
+     <br>     
+     <input type="submit" name="messageboardupdateconfirm" alt="Update" value="OK">    
+)rawliteral";
+const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE_CONFIRM = "messageboardupdateconfirm";
+
+
 const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
      <br>
      Network:&nbsp
@@ -390,7 +450,6 @@ void SetupTime() {
 
   StartupTime = millis();
   LastTimePushbulletWasHeardFrom = millis();
-
 }
 
 void RefreshTimeOnceAWeek() {
@@ -719,14 +778,12 @@ void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
                 PushbulletDismissPush(Current_Pushbullet_Iden);
 
               if (Body_Of_Incoming_Push == restartCommand) {
-                DisplayMessageOnMax("Restarting ...", true);
-                ESP.restart();
+                restartRequested = true;
               };
 
               if (Body_Of_Incoming_Push == clearTheESP32sMemory) {
-                DisplayMessageOnMax("Clearing the memory of the message board and restarting ...", true);
-                clearTheEEPROM();
-                ESP.restart();
+                EEPROMClearRequested = true;
+                restartRequested = true;
               };
 
               if (Body_Of_Incoming_Push == clearTheMessageBoardCommand)
@@ -891,8 +948,8 @@ void CheckPushbulletConnection() {
   if (secondsSinceTheLastTimePushbulletWasHeardFrom > RebootAfterThisManySecondsWithoutHearingFromPushbullet) {
 
     Serial.println("Pushbullet triggered restart!");
-    DisplayMessageOnMax("Pushbullet connection lost - restarting", true);
-    ESP.restart();
+    DisplayMessageOnMax("Pushbullet connection lost", true);
+    restartRequested = true;
   }
 }
 
@@ -905,11 +962,30 @@ void SetupButtons() {
   pinMode(externalButtonPin, INPUT);
 }
 
+void writeMessageBoardPasswordToEEPROM(String data) {
+
+  char highValues = 255;
+  char fieldSeperator = 254;
+
+  data.replace(String(highValues), String(""));
+  data.replace(String(fieldSeperator), String(""));
+
+  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + data + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
+
+  writeEEPROMString(0, EEPROMData);
+
+  loadDataFromEEPROM();
+};
+
 void writePBAccessTokenToEEPROM(String data) {
 
+  const char highValues = 255;
   const char fieldSeperator = 254;
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + data + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
+  data.replace(String(highValues), String(""));
+  data.replace(String(fieldSeperator), String(""));
+
+  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + data + fieldSeperator + messageboardPassword + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
 
   writeEEPROMString(0, EEPROMData);
 
@@ -918,9 +994,12 @@ void writePBAccessTokenToEEPROM(String data) {
 
 void writeMessageToEEPROM(String data) {
 
+  const char highValues = 255;
   const char fieldSeperator = 254;
+  data.replace(String(highValues), String(""));
+  // note: data may contain a field seperator (seperating the message from the time of the message)
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + data;
+  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + messageboardPassword + fieldSeperator + data;
 
   writeEEPROMString(0, EEPROMData);
 
@@ -984,7 +1063,7 @@ String readEEPROMString(int address) {
 void loadDataFromEEPROM() {
 
   // EEPROM data is stored as:
-  //    WIFISSID(fieldSeperator)WIFIPassword(fieldSeperator)PushbulletAccessToken(fieldSeperator)Message
+  //    WIFISSID(fieldSeperator)WIFIPassword(fieldSeperator)PushbulletAccessToken(fieldSeperator)messageboardPassword(fieldSeperator)currentMessage(fieldSeperator)currentMessageTimeAndDate
 
   const char fieldSeperator = 254;
 
@@ -992,12 +1071,13 @@ void loadDataFromEEPROM() {
 
   String CurrentDataSavedInEEPROM = readEEPROMString(0);
 
-  String EEPROMData[5] = { "", "", "", "", "" };
-  // EEPROMData[0] = SSID
-  // EEPROMData[1] = Password
+  String EEPROMData[6] = { "", "", "", "", "", "" };
+  // EEPROMData[0] = Wifi network name (SSID)
+  // EEPROMData[1] = Wifi password
   // EEPROMData[2] = Pushbullet Access Token
-  // EEPROMData[3] = Message
-  // EEPROMData[4] = Message's Time and Date
+  // EEPROMData[3] = Password to update message from web site (default is null, i.e.: "")
+  // EEPROMData[4] = Message
+  // EEPROMData[5] = Message's time and date
 
   if (CurrentDataSavedInEEPROM.length() > 0) {
 
@@ -1009,7 +1089,7 @@ void loadDataFromEEPROM() {
 
       c = CurrentDataSavedInEEPROM.charAt(i);
 
-      if ((c == fieldSeperator) && (field < 4))
+      if ((c == fieldSeperator) && (field < 5))
         field++;
       else
         EEPROMData[field] += String(c);
@@ -1018,27 +1098,26 @@ void loadDataFromEEPROM() {
     wifiSSID = EEPROMData[0];
     wifiPassword = EEPROMData[1];
     pushbulletAccessToken = EEPROMData[2];
-    currentMessage = EEPROMData[3];
-    currentMessageTimeAndDate = EEPROMData[4];
+    messageboardPassword = EEPROMData[3];
+    currentMessage = EEPROMData[4];
+    currentMessageTimeAndDate = EEPROMData[5];
 
-    Serial.println("Loaded from EEPROM ... SSID: " + wifiSSID + " Password: " + wifiPassword + " Pushbullet Access Token: " + pushbulletAccessToken + " Message: " + currentMessage + " Message's Time and Date: " + currentMessageTimeAndDate);
+    Serial.println("Loaded from EEPROM ... SSID: " + wifiSSID + " Password: " + wifiPassword + " Pushbullet Access Token: " + pushbulletAccessToken + " Website update password: " + messageboardPassword + " Message: " + currentMessage + " Message's Time and Date: " + currentMessageTimeAndDate);
   }
 }
 
 void clearTheEEPROM() {
 
-  bool CommmitNeeded = false;
+  Serial.println("Start EEPROM clear");
 
-  for (int i = 0; i < EepromSize; i++) {
-
-    if (EEPROM.read(i) != 255) {
+  for (int i = 0; i < EepromSize; i++)
+    if (EEPROM.read(i) != 255)
       EEPROM.write(i, 255);
-      CommmitNeeded = true;
-    };
-  };
 
-  if (CommmitNeeded)
-    EEPROM.commit();
+  EEPROM.commit();
+  delay(5000); // allow time for commit to happen
+
+  Serial.println("End EEPROM clear");
 }
 
 void SetupFromEEPROM() {
@@ -1251,14 +1330,14 @@ void SetupWifiWithNewCredentials() {
 
         if (lastSSIDSelected.length() > 0) {
           String original = "<option value=" + quote + lastSSIDSelected + quote + ">" + lastSSIDSelected + "</option>";
-          String revised = "<option value=" + quote + lastSSIDSelected + quote + " selected=" + quote + "selected" + quote + ">" + lastSSIDSelected + "</option>";
-          html.replace(original, revised);
+          String revised_ = "<option value=" + quote + lastSSIDSelected + quote + " selected=" + quote + "selected" + quote + ">" + lastSSIDSelected + "</option>";
+          html.replace(original, revised_);
         };
 
         if (lastPasswordUsed.length() > 0) {
           String original = "name=" + quote + "password" + quote;
-          String revised = "name=" + quote + "password" + quote + " value=" + quote + lastPasswordUsed + quote;
-          html.replace(original, revised);
+          String revised_ = "name=" + quote + "password" + quote + " value=" + quote + lastPasswordUsed + quote;
+          html.replace(original, revised_);
         };
 
         html.replace("$errors$", errorMessage);
@@ -1398,11 +1477,27 @@ void SetupWebServer() {
     else
       html.replace("$time$", "time");
 
+    if (messageboardPassword.length() == 0) {
+      const String quote = String('"');
+      String original = "name=" + quote + "passwordneeded" + quote;
+      String revised_ = "name=" + quote + "passwordneeded" + quote + " hidden=" + quote + "hidden" + quote;
+      html.replace(original, revised_);
+    };
+
+    if (htmlFriendlyFeedback.length() == 0) {
+      String original = "name=" + quote + "errormessages" + quote;
+      String revised_ = "name=" + quote + "errormessages" + quote + " hidden=" + quote + "hidden" + quote;
+      html.replace(original, revised_);
+    } else {
+      html.replace("$color$", htmlFriendlyFeedbackColor);
+      html.replace("$errors$", htmlFriendlyFeedback);
+    };
+
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
   });
 
-  server.on("/confirm_message_clear", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmCleared", HTTP_GET, [](AsyncWebServerRequest* request) {
     // present htmlConfirmCleared window
 
     String html = String(htmlHeader);
@@ -1411,9 +1506,35 @@ void SetupWebServer() {
 
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
+    clearMessageRequested = true;
   });
 
-  server.on("/confirm_message_update", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmMemoryCleared", HTTP_GET, [](AsyncWebServerRequest* request) {
+    // present htmlConfirmCleared window
+
+    String html = String(htmlHeader);
+
+    html.concat(htmlConfirmMemoryCleared);
+
+    html.concat(htmlFooter);
+    request->send(200, "text/html", html);
+    EEPROMClearRequested = true;
+    restartRequested = true;
+  });
+
+  server.on("/htmlConfirmRestart", HTTP_GET, [](AsyncWebServerRequest* request) {
+    // present htmlConfirmCleared window
+
+    String html = String(htmlHeader);
+
+    html.concat(htmlConfirmRestart);
+
+    html.concat(htmlFooter);
+    request->send(200, "text/html", html);
+    restartRequested = true;
+  });
+
+  server.on("/htmlConfirmUpdate", HTTP_GET, [](AsyncWebServerRequest* request) {
     // present htmlConfirmUpdate window
 
     const String quote = String('"');
@@ -1450,9 +1571,9 @@ void SetupWebServer() {
     else
       html.replace("$pbaccesstoken$", "");
 
-    html.replace("$errors$", htmlFriendlyFeedback);
-
     html.replace("$color$", htmlFriendlyFeedbackColor);
+
+    html.replace("$errors$", htmlFriendlyFeedback);
 
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
@@ -1466,10 +1587,9 @@ void SetupWebServer() {
     html.concat(htmlClearPusbulletAccessToken);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
+    restartRequested = true;
 
-    delay(1000);
-    ESP.restart();
+    request->send(200, "text/html", html);
   });
 
   server.on("/confirmpushbulletaccesstoken", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -1480,73 +1600,105 @@ void SetupWebServer() {
     html.concat(htmlConfirmPusbulletAccessToken);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
+    restartRequested = true;
 
-    delay(1000);
-    ESP.restart();
+    request->send(200, "text/html", html);
+  });
+
+
+  server.on("/password", HTTP_GET, [](AsyncWebServerRequest* request) {
+    // present htmlGetMessageboardPasswordCredentials window
+
+    const String quote = String('"');
+
+    String html = String(htmlHeader);
+
+    html.concat(htmlGetMessageboardPasswordCredentials);
+
+    html.replace("$old$", "");
+    html.replace("$new1$", "");
+    html.replace("$new2$", "");
+
+    html.replace("$color$", htmlFriendlyFeedbackColor);
+
+    html.replace("$errors$", htmlFriendlyFeedback);
+
+    html.concat(htmlFooter);
+    request->send(200, "text/html", html);
+  });
+
+  server.on("/htmlMessageboardPasswordConfirmed", HTTP_GET, [](AsyncWebServerRequest* request) {
+    // present htmlMessageboardPasswordConfirmed window
+
+    String html = String(htmlHeader);
+
+    html.concat(htmlMessageboardPasswordConfirmed);
+
+    html.concat(htmlFooter);
+    request->send(200, "text/html", html);
   });
 
   server.on("/get", HTTP_GET, [](AsyncWebServerRequest* request) {
     //
-    htmlFriendlyCurrentMessage = "";
+
     htmlFriendlyFeedback = "";
+    htmlFriendlyFeedbackColor = "black";
+    htmlFriendlyCurrentMessage = "";
 
     String html = String(htmlHeader);
 
-    if (request->hasParam(PARAM_INPUT_CLEAR)) {
-      currentMessage = "";
-      resetMax7219(true);
-      clearMessageRequested = true;
-      request->redirect("/confirm_message_clear");
-      return;
-    };
-
     if (request->hasParam(PARAM_INPUT_MESSAGE)) {
 
-      String inputMessage = "";
-      inputMessage = request->getParam(PARAM_INPUT_MESSAGE)->value();
+      String inputMessage = request->getParam(PARAM_INPUT_MESSAGE)->value();
       inputMessage.trim();
 
-      if (inputMessage == restartCommand) {
-        DisplayMessageOnMax("Restarting ...", true);
-        ESP.restart();
-      };
+      Serial.print("Input message: ");
+      Serial.println(inputMessage);
 
-      if (inputMessage == clearTheESP32sMemory) {
-        DisplayMessageOnMax("Clearing the message board's memory and restarting ...", true);
-        clearTheEEPROM();
-        ESP.restart();
-      };
+      if (inputMessage == restartCommand)
+        request->redirect("/htmlConfirmRestart");
 
-      if ((inputMessage.length() == 0) || (inputMessage == clearTheMessageBoardCommand)) {
-        clearMessageRequested = true;
-        request->redirect("/confirm_message_clear");
-        return;
+      if (inputMessage == clearTheESP32sMemory)
+        request->redirect("/htmlConfirmMemoryCleared");
 
-      } else {
+      if (request->hasParam(PARAM_INPUT_DATA_ENTRY_PASSWORD)) {
 
-        if (request->hasParam(PARAM_INPUT_INCLUDETIME)) {
+        String inputPassword = request->getParam(PARAM_INPUT_DATA_ENTRY_PASSWORD)->value();
+        inputPassword.trim();
 
-          String inputTimeCheckboxString = "";
-          inputTimeCheckboxString = request->getParam(PARAM_INPUT_INCLUDETIME)->value();
-
-          if (inputTimeCheckboxString == "on") {
-            const char fieldSeperator = 254;
-            inputMessage.concat(fieldSeperator);
-            inputMessage.concat(" - ");
-            inputMessage.concat(GetFormatTimeandDate());
-          };
+        if (inputPassword != messageboardPassword) {
+          htmlFriendlyFeedback = "The update password is incorrect";
+          htmlFriendlyFeedbackColor = "red";
+          request->redirect("/");
+          return;
         };
-
-        writeMessageToEEPROM(inputMessage);  // save input message to eeprom and make it the current message
-
-        request->redirect("/confirm_message_update");
-
-        resetMax7219(true);
-        DisplayTheCurrentMessage();
-
-        return;
       };
+
+      if ((inputMessage.length() == 0) || (inputMessage == clearTheMessageBoardCommand) || (request->hasParam(PARAM_INPUT_CLEAR))) {
+        request->redirect("/htmlConfirmCleared");
+        return;
+      }
+
+      if (request->hasParam(PARAM_INPUT_INCLUDETIME)) {
+
+        String inputTimeCheckboxString = "";
+        inputTimeCheckboxString = request->getParam(PARAM_INPUT_INCLUDETIME)->value();
+
+        if (inputTimeCheckboxString == "on") {
+          const char fieldSeperator = 254;
+          inputMessage.concat(fieldSeperator);
+          inputMessage.concat(" - ");
+          inputMessage.concat(GetFormatTimeandDate());
+        };
+      };
+
+      writeMessageToEEPROM(inputMessage);  // save input message to eeprom and make it the current message
+
+      request->redirect("/htmlConfirmUpdate");
+
+      resetMax7219(true);
+      DisplayTheCurrentMessage();
+      return;
     };
 
     if (request->hasParam(PARAM_MESSAGE_CLEAR) || request->hasParam(PARAM_MESSAGE_CONFIRM)) {
@@ -1554,8 +1706,9 @@ void SetupWebServer() {
       return;
     };
 
-    if (request->hasParam(PARAM_INPUT_PUSHBULLET_UPDATE)) {
 
+
+    if (request->hasParam(PARAM_INPUT_PUSHBULLET_UPDATE)) {
       String inputPBAccessToken = "";
       htmlFriendlyFeedback = "";
 
@@ -1587,6 +1740,50 @@ void SetupWebServer() {
           request->redirect("/pushbullet");
         };
       };
+    };
+
+
+
+    if (request->hasParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE)) {
+      String inputOldPassword = request->getParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_OLD)->value();
+      String inputNewPassword1 = request->getParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_1)->value();
+      String inputNewPassword2 = request->getParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_2)->value();
+
+      inputNewPassword1.trim();
+      inputNewPassword2.trim();
+
+      if (inputOldPassword != messageboardPassword) {
+        htmlFriendlyFeedbackColor = "red";
+        htmlFriendlyFeedback = "incorrect current password";
+        request->redirect("/password");
+        return;
+      };
+
+      if (inputNewPassword1.length() > 0) {
+        if (inputNewPassword1 != inputNewPassword2) {
+          htmlFriendlyFeedbackColor = "red";
+          htmlFriendlyFeedback = "new password and confirmed new password don't match";
+          request->redirect("/password");
+          return;
+        };
+      };
+
+      if (inputOldPassword == inputNewPassword1) {
+        htmlFriendlyFeedbackColor = "red";
+        htmlFriendlyFeedback = "old and new passwords are the same";
+        request->redirect("/password");
+        return;
+      };
+
+      messageboardPassword = inputNewPassword1;
+      writeMessageBoardPasswordToEEPROM(messageboardPassword);
+      request->redirect("/htmlMessageboardPasswordConfirmed");
+      return;
+    };
+
+    if (request->hasParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE_CONFIRM)) {
+      request->redirect("/");
+      return;
     };
   });
 
@@ -1636,7 +1833,6 @@ void SetupOTAUpdate() {
     })
     .onEnd([]() {
       Serial.println("\nEnd");
-      //ESP.restart();
     })
     .onProgress([](unsigned int progress, unsigned int total) {
       Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -1669,8 +1865,8 @@ void CheckWifiConnection() {
     LastTimeWiFiWasConnected = millis();
   } else {
     if ((millis() - LastTimeWiFiWasConnected) > TwoMinutes) {
-      DisplayMessageOnMax("WiFI connection lost - restarting", true);
-      ESP.restart();
+      DisplayMessageOnMax("WiFI connection lost", true);
+      restartRequested = true;
     }
   }
 }
@@ -1895,6 +2091,17 @@ String GetFormatTimeandDate() {
   return returnResult;
 };
 
+void RestartAndClearAsNeeded() {
+
+  if (EEPROMClearRequested)
+    clearTheEEPROM();
+
+  if (restartRequested) {
+    DisplayMessageOnMax("Restarting ...", true);
+    ESP.restart();
+  };
+}
+
 void setup() {
 
   SetupSerial();
@@ -1933,4 +2140,5 @@ void loop() {
   CheckForNewMessageFromPushbullet();
 
   FullyScrollMessageOnMax();
+  RestartAndClearAsNeeded();
 };
