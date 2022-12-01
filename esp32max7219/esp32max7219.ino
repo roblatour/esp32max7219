@@ -142,7 +142,9 @@ String wifiSSID = "";
 String wifiPassword = "";
 
 // Time stuff
-const char* ntpServer = TIME_SERVER;
+const char* primaryNTPServer = PRIMARY_TIME_SERVER;
+const char* secondaryNTPServer = SECONDARY_TIME_SERVER;
+const char* tertiaryNTPSever = TERTIARY_TIME_SERVER;
 const long gmtOffset_sec = 3600 * TIME_ZONE;
 const int daylightOffset_sec = 3600 * DAYLIGHT_SAVINGS_TIME;
 
@@ -456,7 +458,7 @@ void RefreshTimeOnceAWeek() {
   // refresh the time once a week to allow for drift
   if (millis() > nextTimeCheck) {
     nextTimeCheck = millis() + oneWeekFromNow;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    configTime(gmtOffset_sec, daylightOffset_sec, primaryNTPServer, secondaryNTPServer, tertiaryNTPSever);
   }
 }
 
