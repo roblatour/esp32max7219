@@ -447,19 +447,78 @@ void SetupSerial() {
   Serial.println("Starting " + programID);
 }
 
+bool getNTPTime() {
+
+  Serial.println("Getting NTP time");
+
+  bool returnValue = false;
+
+  struct tm timeinfo;
+
+  if (getLocalTime(&timeinfo)) {
+    time_t t = mktime(&timeinfo);
+    struct timeval now = { .tv_sec = t };
+    settimeofday(&now, NULL);
+    Serial.printf("Time set to: %s", asctime(&timeinfo));
+    Serial.println();
+    returnValue = true;
+  };
+
+  return returnValue;
+}
+
 void SetupTime() {
 
+  const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
+
+  Serial.println("Setting time ... ");
+
+  bool timeWasSuccessfullySet = false;
+
+  configTime(gmtOffset_sec, daylightOffset_sec, primaryNTPServer, secondaryNTPServer, tertiaryNTPSever);
+  timeWasSuccessfullySet = getNTPTime();
+
+  if (!timeWasSuccessfullySet) {
+
+    Serial.println("Time could not be set from NTP server");
+
+    const int epochYear = 1900;
+    const int monthOffset = 1;
+
+    struct tm timeinfo;
+    timeinfo.tm_year = 2023 - epochYear;
+    timeinfo.tm_mon = 1 - monthOffset;
+    timeinfo.tm_mday = 1;
+    timeinfo.tm_hour = 00;
+    timeinfo.tm_min = 00;
+    timeinfo.tm_sec = 00;
+
+    time_t t = mktime(&timeinfo);
+    struct timeval now = { .tv_sec = t };
+    settimeofday(&now, NULL);
+
+    nextTimeCheck = millis() + oneWeekFromNow;
+
+  };
+
   StartupTime = millis();
+
   LastTimePushbulletWasHeardFrom = millis();
 }
 
+
 void RefreshTimeOnceAWeek() {
 
-  // refresh the time once a week to allow for drift
   if (millis() > nextTimeCheck) {
-    nextTimeCheck = millis() + oneWeekFromNow;
-    configTime(gmtOffset_sec, daylightOffset_sec, primaryNTPServer, secondaryNTPServer, tertiaryNTPSever);
-  }
+
+    const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
+    const unsigned long oneHourFromNow = 60 * 60 * 1000;
+
+    if (getNTPTime())
+      nextTimeCheck = millis() + oneWeekFromNow;
+    else
+      nextTimeCheck = millis() + oneHourFromNow;
+  };
 }
 
 void resetMax7219(bool clear) {
@@ -1116,7 +1175,7 @@ void clearTheEEPROM() {
       EEPROM.write(i, 255);
 
   EEPROM.commit();
-  delay(5000); // allow time for commit to happen
+  delay(5000);  // allow time for commit to happen
 
   Serial.println("End EEPROM clear");
 }
@@ -2106,7 +2165,6 @@ void RestartAndClearAsNeeded() {
 void setup() {
 
   SetupSerial();
-  SetupTime();
   SetupMax7219();
   SetupButtons();
   SetupFromEEPROM();
@@ -2118,6 +2176,7 @@ void setup() {
   else
     SetupWiFiWithExistingCredentials(0);
 
+  SetupTime();
   SetupPushbullet();
   SetupWebServer();
   SetupOTAUpdate();
