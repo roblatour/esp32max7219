@@ -18,7 +18,7 @@
 //
 //     1.1 The message board will prompt you to take three steps (which you can do this from your computer or cell phone):
 //         Step 1:  connect to Wi-Fi network ScrollingMessageBoard
-//         Step 2:  open your browser in Incognito mode 
+//         Step 2:  open your browser in Incognito mode
 //         Step 3:  browse to http://123.123.123.123
 //         Step 4:  enter your Wi-Fi network information, and click 'OK'
 //
@@ -146,8 +146,7 @@ String wifiPassword = "";
 const char* primaryNTPServer = PRIMARY_TIME_SERVER;
 const char* secondaryNTPServer = SECONDARY_TIME_SERVER;
 const char* tertiaryNTPSever = TERTIARY_TIME_SERVER;
-const long gmtOffset_sec = 3600 * TIME_ZONE;
-const int daylightOffset_sec = 3600 * DAYLIGHT_SAVINGS_TIME;
+const char* timeZone = MY_TIME_ZONE;
 
 char timeHour[3] = "00";
 char timeMin[3] = "00";
@@ -476,7 +475,10 @@ void SetupTime() {
 
   bool timeWasSuccessfullySet = false;
 
-  configTime(gmtOffset_sec, daylightOffset_sec, primaryNTPServer, secondaryNTPServer, tertiaryNTPSever);
+  configTime(0, 0, primaryNTPServer, secondaryNTPServer, tertiaryNTPSever);
+  setenv("TZ", timeZone, 1);
+  tzset();
+
   timeWasSuccessfullySet = getNTPTime();
 
   if (!timeWasSuccessfullySet) {
@@ -499,7 +501,6 @@ void SetupTime() {
     settimeofday(&now, NULL);
 
     nextTimeCheck = millis() + oneWeekFromNow;
-
   };
 
   StartupTime = millis();
@@ -1445,7 +1446,7 @@ void SetupWifiWithNewCredentials() {
     Serial.println("Access Point server started");
     message = "Step 1: please connect to Wi-Fi network  " + String(AccessPointSSID) + "     Step 2: open your browser in Incognito mode     Step 3: browse to http://" + myIP.toString() + "     Step 4: enter your Wi-Fi network information and click 'OK'";
     DisplayMessageOnMax(message, false);
-   
+
     Serial.println("Waiting for user to update Wi-Fi info in browser");
 
     // assumes network requires a password

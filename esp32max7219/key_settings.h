@@ -21,9 +21,10 @@
 #define REBOOT_AFTER_THIS_MANY_MINUTES_WITHOUT_HEARING_FROM_PUSHBULLET 15
 
 
-#define TIME_ZONE                                                      -5                                      // hour offset from GMT
-#define DAYLIGHT_SAVINGS_TIME                                          1                                       // hour offset for Daylight Savings time (0, .5, 1)
-#define PRIMARY_TIME_SERVER                                            "time.nrc.ca"                           // primary ntp time server 
+#define MY_TIME_ZONE                                                   "EST5EDT,M3.2.0,M11.1.0"                // Time Zone for America/Toronto   
+                                                                                                               // Supported Timezones are listed here: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+                                                                                                               //
+#define PRIMARY_TIME_SERVER                                            "time.nrc.ca"                           // primary ntp time server
 #define SECONDARY_TIME_SERVER                                          "ca.pool.ntp.org"                       // secondary ntp time server
 #define TERTIARY_TIME_SERVER                                           "north-america.pool.ntp.org"            // tertiary ntp time server 
                                                                                                                // alternative ntp time servers/time server pools; 
