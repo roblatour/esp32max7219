@@ -8,20 +8,21 @@
 //
 //   Before compiling and uploading to your ESP32, please review the key_settings.h file and make updates as you may like.
 //
-//   The user's WiFi Network name (SSID), Wifi password, and Pushbullet Access Token are not stored in this sketch nor the key_settings.h file.
+//   The user's WiFi Network name (SSID), Wi-Fi password, and Pushbullet Access Token are not stored in this sketch nor the key_settings.h file.
 //   Rather they are stored in non-volatile memory after being entered by the user via a web browser (see below).
 //
 // To operate:
 //
-//  1. Press and hold the external button for more than 10 seconds when the esp32 is powered on to trigger the process to reset your Wifi Credentials
-//     This should be done for initial setup, but may be done anytime afterwards if your Wifi Network name (SSID) or Wifi password change
+//  1. Press and hold the external button for more than 10 seconds when the esp32 is powered on to trigger the process to reset your Wi-Fi Credentials
+//     This should be done for initial setup, but may be done anytime afterwards if your Wi-Fi Network name (SSID) or Wi-Fi password change
 //
 //     1.1 The message board will prompt you to take three steps (which you can do this from your computer or cell phone):
-//         Step 1:  connect to Wifi network ScrollingMessageBoard
-//         Step 2:  browse to http://123.123.123.123
-//         Step 3:  enter your Wifi network information, and click 'OK'
+//         Step 1:  connect to Wi-Fi network ScrollingMessageBoard
+//         Step 2:  open your browser in Incognito mode 
+//         Step 3:  browse to http://123.123.123.123
+//         Step 4:  enter your Wi-Fi network information, and click 'OK'
 //
-//  2. Once connected to your Wifi network:
+//  2. Once connected to your Wi-Fi network:
 //
 //     2.1 Press and hold the external button for 1 second to have the scrolling message board display the web address at which you can change/clear the text on the scrolling message board
 //         for example:  http://192.168.1.100
@@ -46,10 +47,10 @@
 //
 //                   "Clear the message board"                  (this clears the message board's display)
 //                   "Restart the message board"                (this restarts the message board)
-//                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wifi SSID, Wifi Password, Pushbullet Access Token, and current message are stored)
+//                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wi-Fi SSID, Wi-Fi Password, Pushbullet Access Token, and current message are stored)
 //
 //         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
-////
+//
 //     2.5 To clear the text on the message board:
 //
 //         method 1:  Press and hold the external button for more than 5 seconds
@@ -137,7 +138,7 @@ int slider_scroll_speed;
 #define BUF_SIZE EepromSize + 1       // Maximum characters in a message
 char curMessage[BUF_SIZE] = { " " };  // used to hold current message
 
-// Wifi credentials are not stored as literals in this sketch, rather they are stored to and loaded from non-volatile memory (the EEPROM)
+// Wi-Fi credentials are not stored as literals in this sketch, rather they are stored to and loaded from non-volatile memory (the EEPROM)
 String wifiSSID = "";
 String wifiPassword = "";
 
@@ -424,7 +425,7 @@ const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
 
 
 const char htmlConfirmWIFI[] PROGMEM = R"rawliteral(
-     The Wifi credentials entered are now being tested.<br>
+     The Wi-Fi credentials entered are now being tested.<br>
      <br>
      If they are good, the Scrolling Message Board will automatically restart and use them from now on.<br><br>
      If in the future they change, just repeat this process by holding down the Scrolling Message Board's button for more than 10 seconds when the Scrolling Message Board is being powered on.<br>
@@ -1132,8 +1133,8 @@ void loadDataFromEEPROM() {
   String CurrentDataSavedInEEPROM = readEEPROMString(0);
 
   String EEPROMData[6] = { "", "", "", "", "", "" };
-  // EEPROMData[0] = Wifi network name (SSID)
-  // EEPROMData[1] = Wifi password
+  // EEPROMData[0] = Wi-Fi network name (SSID)
+  // EEPROMData[1] = Wi-Fi password
   // EEPROMData[2] = Pushbullet Access Token
   // EEPROMData[3] = Password to update message from web site (default is null, i.e.: "")
   // EEPROMData[4] = Message
@@ -1263,7 +1264,7 @@ void scanAvailableNetworks() {
 
   if (numSsid < 1)
 
-    Serial.println("Couldn't find any wifi networks");
+    Serial.println("Couldn't find any Wi-Fi networks");
 
   else {
 
@@ -1317,7 +1318,7 @@ void SetupWifiWithNewCredentials() {
   while (accessPointNeedsToBeConfigured) {
 
     String message = message;
-    DisplayMessageOnMax("Wifi Network Setup", true);
+    DisplayMessageOnMax("Wi-Fi Network Setup", true);
 
     Serial.print("Configuring access point...");
     WiFi.softAP(AccessPointSSID);
@@ -1442,10 +1443,10 @@ void SetupWifiWithNewCredentials() {
     });
 
     Serial.println("Access Point server started");
-    message = "Step 1: please connect to Wifi network  " + String(AccessPointSSID) + "      Step 2: browse to http://" + myIP.toString() + "      Step 3: enter your Wifi network information and click 'OK'      ";
+    message = "Step 1: please connect to Wi-Fi network  " + String(AccessPointSSID) + "     Step 2: open your browser in Incognito mode     Step 3: browse to http://" + myIP.toString() + "     Step 4: enter your Wi-Fi network information and click 'OK'";
     DisplayMessageOnMax(message, false);
-
-    Serial.println("Waiting for user to update Wifi info in browser");
+   
+    Serial.println("Waiting for user to update Wi-Fi info in browser");
 
     // assumes network requires a password
     while ((currentSSID == "") || (currentPassword == "")) {
@@ -1461,7 +1462,7 @@ void SetupWifiWithNewCredentials() {
     wifiPassword = newPassword;
 
     // set the current SSID and Passwordto null
-    // these will be reloaded if the Wifi Connection can be established
+    // these will be reloaded if the Wi-Fi Connection can be established
     currentSSID = "";
     currentPassword = "";
 
@@ -1471,9 +1472,9 @@ void SetupWifiWithNewCredentials() {
     while (WiFi.status() == WL_CONNECTED)
       delay(100);
 
-    Serial.println("user has updated Wifi info in browser");
+    Serial.println("user has updated Wi-Fi info in browser");
 
-    // confirm Wifi credentials; attempt to connect ten times
+    // confirm Wi-Fi credentials; attempt to connect ten times
 
     bool WifiSetupSucceeded = false;
 
@@ -1496,12 +1497,12 @@ void SetupWifiWithNewCredentials() {
 
       writeEEPROMString(0, EEPROMData);
 
-      DisplayMessageOnMax("Wifi name and password confirmed!", true);
+      DisplayMessageOnMax("Wi-Fi name and password confirmed!", true);
       DisplayMessageOnMax("Automatically restarting ... ", true);
       ESP.restart();
     };
 
-    DisplayMessageOnMax("*** Wifi access failed! ***", true);
+    DisplayMessageOnMax("*** Wi-Fi access failed! ***", true);
     DisplayMessageOnMax("Automatically restarting ... ", true);
     ESP.restart();
   };

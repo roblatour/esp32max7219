@@ -16,8 +16,9 @@ To operate:
 
      1.1 The message board will prompt you to take three steps (which you can do this from your computer or cell phone):
          Step 1:  connect to Wifi network ScrollingMessageBoard
-         Step 2:  browse to http://123.123.123.123
-         Step 3:  enter your Wifi network information, and click 'OK'
+	     Step 2:  open your browser in Incognito mode 
+         Step 3:  browse to http://123.123.123.123
+         Step 4:  enter your Wifi network information, and click 'OK'
 
   2. Once connected to your Wifi network:
 
