@@ -1,4 +1,4 @@
-// ESP32 Message Board v2
+// ESP32 Message Board v2.1
 // Copyright Rob Latour, 2022 - MIT License
 //
 // ref: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
@@ -49,6 +49,9 @@
 //                   "Restart the message board"                (this restarts the message board)
 //                   "Clear the memory of the message board"    (this clears the non-volatile memory in which your settings Wi-Fi SSID, Wi-Fi Password, Pushbullet Access Token, and current message are stored)
 //
+//         For Method 1, an additional method exists, it is:
+//                   "Show uptime"                              (this will show in the browser the amount of time since the Scrolling Message Board was last started)
+//
 //         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 //
 //     2.5 To clear the text on the message board:
@@ -93,7 +96,7 @@
 #include "pushbulletCertificates.h"
 
 //Program ID
-const String programID = "ESP32 Message Board v2";
+const String programID = "ESP32 Message Board v2.1";
 
 // Connection Pins:
 const int externalButtonPin = EXTERNAL_BUTTON_PIN;
@@ -161,9 +164,10 @@ unsigned long nextTimeCheck = 0;
 const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
 
 // Special Commands
+const String clearTheESP32sMemory = CLEAR_ESP32S_MEMORY_COMMAND;
 const String clearTheMessageBoardCommand = CLEAR_THE_MESSAGE_BOARD_COMMAND;
 const String restartCommand = RESTART_COMMAND;
-const String clearTheESP32sMemory = CLEAR_ESP32S_MEMORY_COMMAND;
+const String showUptime = SHOW_UPTIME_COMMAND;
 
 // Pushbullet
 String pushbulletAccessToken = "";
@@ -329,6 +333,15 @@ const char htmlConfirmRestart[] PROGMEM = R"rawliteral(
      <br>
      Please close this window.  
 )rawliteral";
+
+const char htmlConfirmUptime[] PROGMEM = R"rawliteral(
+     The Scrolling Message Board has been up for<br>    
+     <br>
+     $uptime$<br>
+     <br>
+     <input type="submit" name="uptimeok" alt="OK" value="OK">  
+)rawliteral";
+const char* PARAM_UPTIME_OK = "uptimeok";
 
 
 const char htmlConfirmUpdate[] PROGMEM = R"rawliteral(
@@ -840,18 +853,22 @@ void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
                 PushbulletDismissPush(Current_Pushbullet_Iden);
 
               if (Body_Of_Incoming_Push == restartCommand) {
+                Body_Of_Incoming_Push = "";
                 restartRequested = true;
               };
 
               if (Body_Of_Incoming_Push == clearTheESP32sMemory) {
+                Body_Of_Incoming_Push = "";
                 EEPROMClearRequested = true;
                 restartRequested = true;
               };
 
-              if (Body_Of_Incoming_Push == clearTheMessageBoardCommand)
+              if (Body_Of_Incoming_Push == clearTheMessageBoardCommand) {
+                Body_Of_Incoming_Push = "";
                 clearMessageRequested = true;
-              else {
+              };
 
+              if (Body_Of_Incoming_Push != "") {
                 currentMessage = String(Body_Of_Incoming_Push);
                 DisplayTheCurrentMessage();
                 writeMessageToEEPROM(currentMessage);
@@ -1509,6 +1526,87 @@ void SetupWifiWithNewCredentials() {
   };
 };
 
+String GetUpTime() {
+
+  unsigned long ms = millis();
+
+  const int oneSecond = 1000;
+  const int oneMinute = oneSecond * 60;
+  const int oneHour = oneMinute * 60;
+  const int oneDay = oneHour * 24;
+
+  int numberOfDays = ms / oneDay;
+  ms = ms - numberOfDays * oneDay;
+
+  int numberOfHours = ms / oneHour;
+  ms = ms - numberOfHours * oneHour;
+
+  int numberOfMinutes = ms / oneMinute;
+  ms = ms - numberOfMinutes * oneMinute;
+
+  int numberOfSeconds = ms / oneSecond;
+
+  String returnValue = "";
+
+  if (numberOfDays == 1) {
+    returnValue.concat("1 day, ");
+  } else {
+    if (numberOfDays > 1) {
+      returnValue.concat(String(numberOfDays));
+      returnValue.concat(" days, ");
+    };
+  };
+
+  if (numberOfHours == 1) {
+    returnValue.concat("1 hour, ");
+  } else {
+    if (numberOfHours > 1) {
+      returnValue.concat(String(numberOfHours));
+      returnValue.concat(" hours, ");
+    };
+  };
+
+  if (numberOfMinutes == 1) {
+    returnValue.concat("1 minute, ");
+  } else {
+    if (numberOfMinutes > 1) {
+      returnValue.concat(String(numberOfMinutes));
+      returnValue.concat(" minutes, ");
+    };
+  };
+
+  if (numberOfSeconds == 1) {
+    returnValue.concat("1 second.");
+  } else {
+    if (numberOfSeconds > 1) {
+      returnValue.concat(String(numberOfSeconds));
+      returnValue.concat(" seconds.");
+    };
+  };
+
+  // tweak the return value so that it is more English like
+
+  returnValue.trim();
+
+  if (returnValue.endsWith(",")) {
+    returnValue = returnValue.substring(0, returnValue.length() - 1);
+    returnValue.concat(".");
+  };
+
+  int pos = returnValue.lastIndexOf(",");
+  if (pos > -1) {
+    String firstSection = returnValue.substring(0, pos);
+    String secondSection = returnValue.substring(pos + 1);
+    if ((numberOfDays > 0) || (numberOfHours > 0)) {
+      returnValue = firstSection + ", and" + secondSection;
+    } else {
+      returnValue = firstSection + " and" + secondSection;
+    };
+  };
+
+  return returnValue;
+}
+
 // ************************************************************************************************************************************************************
 void SetupWebServer() {
 
@@ -1594,6 +1692,18 @@ void SetupWebServer() {
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
     restartRequested = true;
+  });
+
+  server.on("/htmlConfirmUptime", HTTP_GET, [](AsyncWebServerRequest* request) {
+    // present htmlConfirmUptime window
+
+    String html = String(htmlHeader);
+
+    html.concat(htmlConfirmUptime);
+    html.replace("$uptime$", GetUpTime());
+
+    html.concat(htmlFooter);
+    request->send(200, "text/html", html);
   });
 
   server.on("/htmlConfirmUpdate", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -1717,11 +1827,20 @@ void SetupWebServer() {
       Serial.print("Input message: ");
       Serial.println(inputMessage);
 
-      if (inputMessage == restartCommand)
-        request->redirect("/htmlConfirmRestart");
+      if (inputMessage == showUptime) {
+        request->redirect("/htmlConfirmUptime");
+        return;
+      };
 
-      if (inputMessage == clearTheESP32sMemory)
+      if (inputMessage == restartCommand) {
+        request->redirect("/htmlConfirmRestart");
+        return;
+      };
+
+      if (inputMessage == clearTheESP32sMemory) {
         request->redirect("/htmlConfirmMemoryCleared");
+        return;
+      };
 
       if (request->hasParam(PARAM_INPUT_DATA_ENTRY_PASSWORD)) {
 
@@ -1763,12 +1882,10 @@ void SetupWebServer() {
       return;
     };
 
-    if (request->hasParam(PARAM_MESSAGE_CLEAR) || request->hasParam(PARAM_MESSAGE_CONFIRM)) {
+    if (request->hasParam(PARAM_MESSAGE_CLEAR) || request->hasParam(PARAM_MESSAGE_CONFIRM) || request->hasParam(PARAM_UPTIME_OK)) {
       request->redirect("/");
       return;
     };
-
-
 
     if (request->hasParam(PARAM_INPUT_PUSHBULLET_UPDATE)) {
       String inputPBAccessToken = "";

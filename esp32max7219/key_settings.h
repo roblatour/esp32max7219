@@ -11,9 +11,11 @@
 #define ACCESS_POINT_SSID                                             "ScrollingMessageBoard"                  // Access Point network name
 
 #define PUSHBULLET_TITLE_TO_REACT_TO                                  "Leave a message"
-#define CLEAR_THE_MESSAGE_BOARD_COMMAND                               "Clear the message board"
-#define RESTART_COMMAND                                               "Restart the message board"
+                                                                                                               // Special commands:
 #define CLEAR_ESP32S_MEMORY_COMMAND                                   "Clear the memory of the message board"  // clear all non-volatile memory (i.e. current wifi SSID, wifi Password, Pushbullet Access Token, and the current message)
+#define CLEAR_THE_MESSAGE_BOARD_COMMAND                               "Clear the message board"                // clear the current message 
+#define RESTART_COMMAND                                               "Restart the message board"              // restart the message board
+#define SHOW_UPTIME_COMMAND                                           "Show uptime"                           // show uptime in the web browser
 
 #define MAXIMUM_SIZE_OF_NON_VOLATILE_MEMORY                            4096                                    // 4096 (4K) is the maximum supported
 

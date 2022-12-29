@@ -49,6 +49,10 @@ To operate:
                    "Clear the memory of the message board"    (clears the non-volatile memory in which the Wifi SSID, 
 				                                              Wifi Password, Pushbullet Access Token, and current
  															  message values are stored)
+															  
+         For Method 1, an additional method exists, it is:
+                   "Show uptime"                              (this will show in the browser the amount of time since the Scrolling Message Board was last started)
+
 
          Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 
