@@ -54,7 +54,11 @@ To operate:
                    "Show uptime"                              (this will show in the browser the amount of time since the Scrolling Message Board was last started)
 
 
-         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
+         Notes: 
+
+            the above special commands are not case sensitive; i.e.  "Show uptime" (without the quotes) and "show uptime" (without the quotes) will work equally as well
+
+            the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 
      2.5 To clear the text on the message board:
 

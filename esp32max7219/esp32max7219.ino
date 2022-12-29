@@ -52,7 +52,11 @@
 //         For Method 1, an additional method exists, it is:
 //                   "Show uptime"                              (this will show in the browser the amount of time since the Scrolling Message Board was last started)
 //
-//         Note the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
+//          Notes:
+//
+//             the above special commands are not case sensitive; i.e.  "Show uptime" (without the quotes) and "show uptime" (without the quotes) will work equally as well
+//
+//             the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 //
 //     2.5 To clear the text on the message board:
 //
@@ -852,18 +856,18 @@ void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
               if (!Dismissed)
                 PushbulletDismissPush(Current_Pushbullet_Iden);
 
-              if (Body_Of_Incoming_Push == restartCommand) {
+              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, restartCommand)) {
                 Body_Of_Incoming_Push = "";
                 restartRequested = true;
               };
 
-              if (Body_Of_Incoming_Push == clearTheESP32sMemory) {
+              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheESP32sMemory)) {
                 Body_Of_Incoming_Push = "";
                 EEPROMClearRequested = true;
                 restartRequested = true;
               };
 
-              if (Body_Of_Incoming_Push == clearTheMessageBoardCommand) {
+              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheMessageBoardCommand)) {
                 Body_Of_Incoming_Push = "";
                 clearMessageRequested = true;
               };
@@ -1526,6 +1530,13 @@ void SetupWifiWithNewCredentials() {
   };
 };
 
+bool StringsAreMatchRegardlessOfCase(String s1, String s2) {
+
+  s1.toUpperCase();
+  s2.toUpperCase();
+  return (s1 == s2);
+}
+
 String GetUpTime() {
 
   unsigned long ms = millis();
@@ -1585,9 +1596,7 @@ String GetUpTime() {
   };
 
   // tweak the return value so that it is more English like
-
   returnValue.trim();
-
   if (returnValue.endsWith(",")) {
     returnValue = returnValue.substring(0, returnValue.length() - 1);
     returnValue.concat(".");
@@ -1597,11 +1606,7 @@ String GetUpTime() {
   if (pos > -1) {
     String firstSection = returnValue.substring(0, pos);
     String secondSection = returnValue.substring(pos + 1);
-    if ((numberOfDays > 0) || (numberOfHours > 0)) {
-      returnValue = firstSection + ", and" + secondSection;
-    } else {
-      returnValue = firstSection + " and" + secondSection;
-    };
+    returnValue = firstSection + " and" + secondSection;
   };
 
   return returnValue;
@@ -1827,17 +1832,17 @@ void SetupWebServer() {
       Serial.print("Input message: ");
       Serial.println(inputMessage);
 
-      if (inputMessage == showUptime) {
+      if (StringsAreMatchRegardlessOfCase(inputMessage, showUptime)) {
         request->redirect("/htmlConfirmUptime");
         return;
       };
 
-      if (inputMessage == restartCommand) {
+      if (StringsAreMatchRegardlessOfCase(inputMessage, restartCommand)) {
         request->redirect("/htmlConfirmRestart");
         return;
       };
 
-      if (inputMessage == clearTheESP32sMemory) {
+      if (StringsAreMatchRegardlessOfCase(inputMessage, clearTheESP32sMemory)) {
         request->redirect("/htmlConfirmMemoryCleared");
         return;
       };
@@ -1855,7 +1860,7 @@ void SetupWebServer() {
         };
       };
 
-      if ((inputMessage.length() == 0) || (inputMessage == clearTheMessageBoardCommand) || (request->hasParam(PARAM_INPUT_CLEAR))) {
+      if ((inputMessage.length() == 0) || (StringsAreMatchRegardlessOfCase(inputMessage, clearTheMessageBoardCommand)) || (request->hasParam(PARAM_INPUT_CLEAR))) {
         request->redirect("/htmlConfirmCleared");
         return;
       }
