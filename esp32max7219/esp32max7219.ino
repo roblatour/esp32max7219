@@ -1,4 +1,4 @@
-// ESP32 Message Board v2.1
+// ESP32 Message Board v2.2
 // Copyright Rob Latour, 2022 - MIT License
 //
 // ref: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
@@ -58,6 +58,8 @@
 //
 //             the maximum text message length is about 4,000 characters (which should be more that enough for most use cases)
 //
+//             if the message starts with "[1]" (without the quotes) it will appear only once
+//
 //     2.5 To clear the text on the message board:
 //
 //         method 1:  Press and hold the external button for more than 5 seconds
@@ -100,7 +102,7 @@
 #include "pushbulletCertificates.h"
 
 //Program ID
-const String programID = "ESP32 Message Board v2.1";
+const String programID = "ESP32 Message Board v2.2";
 
 // Connection Pins:
 const int externalButtonPin = EXTERNAL_BUTTON_PIN;
@@ -651,8 +653,11 @@ void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
 
 void DisplayTheCurrentMessageOnMax(bool displayMessageOnlyOnce) {
 
-  String fullMessage = currentMessage + currentMessageTimeAndDate;
-  DisplayMessageOnMax(fullMessage, displayMessageOnlyOnce);
+  if (currentMessage.length() > 0) {
+    String fullMessage = currentMessage + currentMessageTimeAndDate;
+    DisplayMessageOnMax(fullMessage, displayMessageOnlyOnce);
+  };
+
 }
 
 //*****************  every 24 hours send a request to keep the Pushbullet account alive (with out this it would expire every 30 days)
@@ -2056,8 +2061,18 @@ void CheckWifiConnection() {
 }
 
 void DisplayTheCurrentMessage() {
-  if (currentMessage.length() > 0)
-    DisplayTheCurrentMessageOnMax(false);
+
+  if (currentMessage.length() > 0) {
+
+    bool showOnlyOnce = currentMessage.startsWith("[1]");
+
+    if (showOnlyOnce) {
+      currentMessage.remove(0, 3);
+      DisplayTheCurrentMessageOnMax(true);
+      currentMessage = "[1]" + currentMessage;
+    } else
+      DisplayTheCurrentMessageOnMax(false);
+  };
 };
 
 void ClearDisplayAsNeeded() {
