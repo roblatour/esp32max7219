@@ -86,3 +86,7 @@ To operate:
 
 For more information please see:
 https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
+
+## Support
+
+[<img alt="buy me  a coffee" width="200px" src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" />](https://www.buymeacoffee.com/roblatour)
