@@ -1,4 +1,4 @@
-# esp32max7219
+# ESP32 Max7219
 Voice controlled scrolling message board
 by Rob Latour
 
