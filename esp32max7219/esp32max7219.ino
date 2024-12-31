@@ -81,8 +81,31 @@
 //     Donations welcome at rlatour.com
 
 //
-// Board Manager: DOIT ESP32 DEVKIT V1
+// Compile and upload using Arduino IDE (2.3.4 or greater)
 //
+// Physical board:                        DOIT ESP32 DEVKIT V1
+// Board Manager:                         ESP32 by Espressif Systems board library v2.0.13  
+// Board in Arduino board manager:        DOIT ESP32 DEVKIT V1
+//
+// Arduino Tools settings:
+//
+// USB CDC On Boot:                       "Enabled"
+// USB DFU On Boot:                       "Disabled"
+
+// CPU Frequency:                         "240MHz (WiFi)"
+// Core Debug Level:                      "None"
+// Erase All Flash Before Sketch Upload:  "Disabled"
+// Events Run On:                         "Core 1"
+// Flash Frequency                        "80MHz"
+// Flash Mode:                            "QI0"
+// Flash Size                             "4MB (32Mb)"
+// JTAG Adapter                           "Disabled"
+// Arduino Runs On                        "Core 1"
+// USB Firmware MSCOn Boot:               "Disabled"
+// Partition Scheme:                      "Default 4BB with spiffs (1.285MB APP/1.5MB SPIFFS)"
+// PSRAM:                                 "Disabled"
+// Upload Speed:                          "921600"
+
 
 #include <Arduino.h>
 #include <ArduinoJson.h>        // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
