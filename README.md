@@ -79,10 +79,6 @@ To operate:
 	 
      When the certificates expire they will need to be updated and this sketch recompiled and reloaded
 
-     I am already thinking of ways to make this more seamless in the future ... perhaps a future update?
-
-     Donations welcome at https://rlatour.com/
-
 
 For more information please see:
 https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
