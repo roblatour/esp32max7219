@@ -79,6 +79,16 @@ To operate:
 	 
      When the certificates expire they will need to be updated and this sketch recompiled and reloaded
 
+     Edit: Jan 2nd, 2025
+     I've just released this program to make this super easy
+     https://github.com/roblatour/certifiable
+
+     with it just use
+     certifiable api.pushbullet.com -n 2 -c
+     and 
+     certifiable zebra.pushbullet.com -n 2 -c
+     to get the needed code copied to your Windows clipboard.
+
 
 For more information please see:
 https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
