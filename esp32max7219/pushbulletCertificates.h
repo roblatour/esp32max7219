@@ -1,15 +1,19 @@
 // ESP32 Message Board v2
 // Copyright Rob Latour, 2022
 
-// to get a certificate, use a program called openssl
-// for more information please see this video: https://youtu.be/pLmHELQfkx0
-// to get oppenssl, download Windows executable from: https://kb.firedaemon.com/support/solutions/articles/4000121705#Download-OpenSSL
-// here is the command to get the certificate for api.pushbullet.com
-//      openssl s_client -showcerts -connect api.pushbullet.com:443
+// when in the future the certificates below expire
+// you can use this program to get the needed updates
+// https://github.com/roblatour/certifiable
+//
+// with it just use:
+//
+// certifiable api.pushbullet.com -n 2 -v PUSHBULLET_API_ROOT_CA -c
+// and 
+// certifiable zebra.pushbullet.com -n 2 -v PUSHBULLET_KEEP_ALIVE_ROOT_CA -c
+//
+// to get the needed code copied to your Windows clipboard
 
-// IMPORTANT: use the second certificate displayed
-
-// while note the certificates are the same below, they are coded seperately should they ever become different
+// note the certificates are the same below, they are coded seperately should they ever become different
 
 const char* PUSHBULLET_API_HOST = "api.pushbullet.com";	 
 // v:NotBefore: Mar 13 00:00:00 2024 GMT; NotAfter: Mar 12 23:59:59 2027 GMT
