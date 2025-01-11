@@ -1,5 +1,5 @@
-// ESP32 Message Board v2.2
-// Copyright Rob Latour, 2022 - MIT License
+// ESP32 Message Board v2.3
+// Copyright Rob Latour, 2025 - MIT License
 //
 // ref: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
 // ref: https://github.com/roblatour/esp32max7219
@@ -31,7 +31,7 @@
 //         for example:  http://192.168.1.100/password
 //         To start, the current password is blank, that is to say nothing is entered in the current password box
 //         If the current password is changed from being blank to something else, it can later be changed back to being blank by leaving the new and confirmed new passwords as blank when updating the password
-//         If the current password is not blank, the user will need to enter it to to change the text of the scrolling message board via the web interface (see 2.4 below)
+//         If the current password is not blank, the user will need ao enter it to to change the text of the scrolling message board via the web interface (see 2.4 below)
 //
 //     2.3 (Optional) To enter your Pushbullet Access Token, browse to the address identified in step 2.1 with "/pushbullet" (without the quotes) added after it,
 //         for example:  http://192.168.1.100/pushbullet
@@ -78,54 +78,51 @@
 //
 //     I am already thinking of ways to make this more seamless in the future ... perhaps a future update?
 //
-//     Donations welcome at rlatour.com
+//     Donations welcome at https://github.com/roblatour/esp32max7219
 
 //
-// Compile and upload using Arduino IDE (2.3.4 or greater)
+// Board Manager: esp32 By Espressif Systems - version 2.0.13
+//                DOIT ESP32 DEVKIT V1
 //
-// Physical board:                        DOIT ESP32 DEVKIT V1
-// Board Manager:                         ESP32 by Espressif Systems board library v2.0.13  
-// Board in Arduino board manager:        DOIT ESP32 DEVKIT V1
-//
-// Arduino Tools settings:
-//
-// USB CDC On Boot:                       "Enabled"
-// USB DFU On Boot:                       "Disabled"
-
-// CPU Frequency:                         "240MHz (WiFi)"
-// Core Debug Level:                      "None"
-// Erase All Flash Before Sketch Upload:  "Disabled"
-// Events Run On:                         "Core 1"
-// Flash Frequency                        "80MHz"
-// Flash Mode:                            "QI0"
-// Flash Size                             "4MB (32Mb)"
-// JTAG Adapter                           "Disabled"
-// Arduino Runs On                        "Core 1"
-// USB Firmware MSCOn Boot:               "Disabled"
-// Partition Scheme:                      "Default 4BB with spiffs (1.285MB APP/1.5MB SPIFFS)"
-// PSRAM:                                 "Disabled"
-// Upload Speed:                          "921600"
-
+// Libraries:
+// ArduinoJson         6.19.4 Benoit Blanchon https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
+// ArduinoOTA          2.0.0  (native to the Arduino IDE libraries)
+// ArduinoSort         1.0.0  Emil Vikström https://github.com/emilv/ArduinoSort
+// AsyncTCP            1.1.4  dvarrel https://github.com/dvarrel/AsyncTCP
+// EEPROM              2.0.0  (native to the Arduino IDE libraries)
+// ESP Async WebServer 2.10.8 https://github.com/esphome/ESPAsyncWebServer
+// ESPmDNS             2.0.0  (native to the Arduino IDE libraries)
+// FS                  2.0.0  (native to the Arduino IDE libraries)
+// MD_MAX72XX          3.5.1  magicDesigns https://github.com/MajicDesigns/MD_MAX72xx
+// MD_Parola           3.7.3  magicDesigns https://github.com/MajicDesigns/MD_Parola
+// MD_MAXPanel         1.4.0  (dependency of MD_Parole - included above)
+// SPI                 2.0.0  (native to the Arduino IDE libraries)
+// Time                1.6.1  Paul Stoffregen version 1.6.1 https://github.com/PaulStoffregen/Time
+// Update              2.0.0  (native to the Arduino IDE libraries)
+// WebSockets          2.4.0  Markus Sattler https://github.com/Links2004/arduinoWebSockets
+// WiFi                2.0.0  (native to the Arduino IDE libraries)
+// WiFiClientSecure    2.0.0  (native to the Arduino IDE libraries)
 
 #include <Arduino.h>
-#include <ArduinoJson.h>        // ArdunioJSON by Benoit Blanchon version 6.19.4 https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
-#include <ESPAsyncWebServer.h>  // https://github.com/esphome/ESPAsyncWebServer (put all files in src directory into the ESPAsyncWebServer directory)
-#include <WebSocketsClient.h>   // Websockets by Markus Sattler version 2.3.6 https://github.com/Links2004/arduinoWebSockets
-#include <MD_Parola.h>          // MD_Parol by magicDesigns version 3.6.2 https://github.com/MajicDesigns/MD_Parola
-#include <MD_MAX72xx.h>         // MD_MAX72XX by magicDesigns version 3.3.1  https://github.com/MajicDesigns/MD_MAX72xx
-                                // MD_MAXPanel by magicDesigns version 1.3.1 https://github.com/MajicDesigns/MD_MAXPanel
-#include <ArduinoSort.h>        // Arduino Sort by Emil Vikström version https://github.com/emilv/ArduinoSort
-#include <time.h>               // Time by Michael Margolis version 1.6.1
+#include <ArduinoJson.h>
+#include <ESPAsyncWebServer.h>
+#include <WebSocketsClient.h>
+#include <MD_Parola.h>
+#include <MD_MAX72xx.h>
+
+#include <ArduinoSort.h>
+#include <time.h>
 #include <WiFi.h>
 #include <TimeLib.h>
+
 #include <EEPROM.h>
 #include <ArduinoOTA.h>
 
 #include "key_settings.h"
 #include "pushbulletCertificates.h"
 
-//Program ID
-const String programID = "ESP32 Message Board v2.2";
+// Program ID
+const String programID = "ESP32 Message Board v2.3";
 
 // Connection Pins:
 const int externalButtonPin = EXTERNAL_BUTTON_PIN;
@@ -144,13 +141,13 @@ bool buttonCheckUnderway = false;
 
 const int oneSecond = 1000;
 
-const unsigned long buttonDownThresholdForResetingNonVolatileMemory = 10 * oneSecond;  // 10 seconds
+const unsigned long buttonDownThresholdForResetingNonVolatileMemory = 10 * oneSecond; // 10 seconds
 bool manualResetRequested = false;
 
-const unsigned long buttonDownThresholdForRequestingTheMessageBoardAddress = 1 * oneSecond;  // 1 second
-bool messageBoardsAddressRequested = false;                                                  // if you want the board's address to appear as part of the startup message, this can be initially be set to true
+const unsigned long buttonDownThresholdForRequestingTheMessageBoardAddress = 1 * oneSecond; // 1 second
+bool messageBoardsAddressRequested = false;                                                 // if you want the board's address to appear as part of the startup message, this can be initially be set to true
 
-const unsigned long buttonDownThresholdForClearingTheMessageBoard = 5 * oneSecond;  // 5 seconds
+const unsigned long buttonDownThresholdForClearingTheMessageBoard = 5 * oneSecond; // 5 seconds
 bool clearMessageRequested = false;
 bool restartRequested = false;
 bool EEPROMClearRequested = false;
@@ -159,7 +156,7 @@ bool EEPROMClearRequested = false;
 const int numberOfMax7219Modules = NUMBER_OF_MAX7219_MODULES;
 
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-MD_Parola P = MD_Parola(HARDWARE_TYPE, CsPin, numberOfMax7219Modules);  // SPI config
+MD_Parola P = MD_Parola(HARDWARE_TYPE, CsPin, numberOfMax7219Modules); // SPI config
 
 textEffect_t scrollEffect = PA_SCROLL_LEFT;
 textPosition_t scrollAlign = PA_LEFT;
@@ -167,27 +164,27 @@ int scrollSpeed = 1000;
 int scrollPause = 0;
 int slider_scroll_speed;
 
-#define BUF_SIZE EepromSize + 1       // Maximum characters in a message
-char curMessage[BUF_SIZE] = { " " };  // used to hold current message
+#define BUF_SIZE EepromSize + 1    // Maximum characters in a message
+char curMessage[BUF_SIZE] = {" "}; // used to hold current message
 
 // Wi-Fi credentials are not stored as literals in this sketch, rather they are stored to and loaded from non-volatile memory (the EEPROM)
 String wifiSSID = "";
 String wifiPassword = "";
 
 // Time stuff
-const char* primaryNTPServer = PRIMARY_TIME_SERVER;
-const char* secondaryNTPServer = SECONDARY_TIME_SERVER;
-const char* tertiaryNTPSever = TERTIARY_TIME_SERVER;
-const char* timeZone = MY_TIME_ZONE;
+const char *primaryNTPServer = PRIMARY_TIME_SERVER;
+const char *secondaryNTPServer = SECONDARY_TIME_SERVER;
+const char *tertiaryNTPSever = TERTIARY_TIME_SERVER;
+const char *timeZone = MY_TIME_ZONE;
 
 char timeHour[3] = "00";
 char timeMin[3] = "00";
 char timeSec[3];
 String timeAmPm;
 
-unsigned long LastTimeWiFiWasConnected;
+unsigned long lastTimeWiFiWasConnected;
 unsigned long secondsSinceStartup;
-unsigned long TwoMinutes = 120000;
+unsigned long twoMinutes = 120000;
 
 unsigned long nextTimeCheck = 0;
 const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
@@ -202,37 +199,35 @@ const String showUptime = SHOW_UPTIME_COMMAND;
 String pushbulletAccessToken = "";
 String lastPbAccessToken = "";
 
-const String Pushbullet_Title_To_React_To = PUSHBULLET_TITLE_TO_REACT_TO;
+const String pushbulletTitleToReactTo = PUSHBULLET_TITLE_TO_REACT_TO;
 
-const String Pushbullet_Server = "stream.pushbullet.com";
-const String Pushbullet_Server_Directory = "/websocket/";
-const String Pushbullet_KeepAlive_ID = "rob_messages_active";  // <*** do not change this, it is a special code Pushbullet has provided for use with this program only; used to prevent accounts from expiring for 30 days
-const int Pushbullet_Server_Port = 443;
-const int https_port = 443;
+String pushbulletServer = "stream.pushbullet.com";
+String pushbulletServerDirectory = "/websocket/";
+const String pushbulletKeepAliveID = "rob_messages_active"; // <*** do not change this, it is a special code Pushbullet has provided for use with this program only; used to prevent accounts from expiring for 30 days
 
 bool pushbulletIsEnabled = false;
 const int lengthOfAValidPushbulletAccessToken = 34;
 
-String My_Pushbullet_Client_ID = "";
+String myPushbulletClientID = "";
 
-bool SendPushbulletKeepAliveRequest = SEND_PUSHBULLET_KEEP_ALIVE_REQUEST;
+bool sendPushbulletKeepAliveRequest = SEND_PUSHBULLET_KEEP_ALIVE_REQUEST;
 
-bool Always_Confirm_Status = false;
-bool Report_via_Push = false;
+bool alwaysConfirmStatus = false;
+bool reportViaPush = false;
 
-unsigned long StartupTime;
-unsigned long LastTimePushbulletWasHeardFrom;
-unsigned long LastKeepAliveRequest;
+unsigned long startupTime;
+unsigned long lastTimePushbulletWasHeardFrom;
+unsigned long lastKeepAliveRequest;
 
-const unsigned long RebootAfterThisManySecondsWithoutHearingFromPushbullet = REBOOT_AFTER_THIS_MANY_MINUTES_WITHOUT_HEARING_FROM_PUSHBULLET * 60 * oneSecond;  // measured in milliseconds
-const unsigned long TwentyFourHours = 86400;                                                                                                                   // 24 hours * 60 minutes * 60 seconds (measured in seconds)
+const unsigned long rebootAfterThisManySecondsWithoutHearingFromPushbullet = REBOOT_AFTER_THIS_MANY_MINUTES_WITHOUT_HEARING_FROM_PUSHBULLET * 60 * oneSecond; // measured in milliseconds
+const unsigned long twentyFourHours = 86400;                                                                                                                  // 24 hours * 60 minutes * 60 seconds (measured in seconds)
 
 unsigned long secondsSinceLastKeepAliveRequest;
 
 WebSocketsClient webSocket;
 
 // WiFi Access Point
-const char* AccessPointSSID = ACCESS_POINT_SSID;
+const char *AccessPointSSID = ACCESS_POINT_SSID;
 IPAddress accessPointIPaddr(123, 123, 123, 123);
 IPAddress accessPointIPMask(255, 255, 255, 0);
 AsyncWebServer accessPointServer(80);
@@ -246,10 +241,10 @@ String lastPasswordUsed = "";
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
-const char* hostName = "admin";
+const char *hostName = "admin";
 
-const char* PARAM_INPUT_SSID = "ssid";
-const char* PARAM_INPUT_PASSWORD = "password";
+const char *PARAM_INPUT_SSID = "ssid";
+const char *PARAM_INPUT_PASSWORD = "password";
 
 const String nothingWasEntered = "**null**";
 
@@ -313,7 +308,6 @@ const char htmlFooter[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-
 // if you would rather the 'include time and date' checkbox set to checked as a default, use:
 // <input type="checkbox" id="includetime" name="includetime" checked><label for="includetime">Include $time$</label><br>
 
@@ -335,19 +329,18 @@ const char htmlDataEntryWindow[] PROGMEM = R"rawliteral(
          <input type="submit" name="update" alt="Update" value="Update">&nbsp&nbsp&nbsp<input type="submit" name="clear" alt="Clear" value="Clear">
      </div>
 )rawliteral";
-const char* PARAM_INPUT_MESSAGE = "message";
-const char* PARAM_INPUT_CLEAR = "clear";
-const char* PARAM_INPUT_UPDATE = "update";
-const char* PARAM_INPUT_DATA_ENTRY_PASSWORD = "DEpassword";
-const char* PARAM_INPUT_INCLUDETIME = "includetime";
+const char *PARAM_INPUT_MESSAGE = "message";
+const char *PARAM_INPUT_CLEAR = "clear";
+const char *PARAM_INPUT_UPDATE = "update";
+const char *PARAM_INPUT_DATA_ENTRY_PASSWORD = "DEpassword";
+const char *PARAM_INPUT_INCLUDETIME = "includetime";
 
 const char htmlConfirmCleared[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being cleared.<br>
      <br>
      <input type="submit" name="messageclear" alt="OK" value="OK">  
 )rawliteral";
-const char* PARAM_MESSAGE_CLEAR = "messageclear";
-
+const char *PARAM_MESSAGE_CLEAR = "messageclear";
 
 const char htmlConfirmMemoryCleared[] PROGMEM = R"rawliteral(
      The memory of the Scrolling Message Board will be cleared<br>    
@@ -355,7 +348,6 @@ const char htmlConfirmMemoryCleared[] PROGMEM = R"rawliteral(
      <br>
      Please close this window.  
 )rawliteral";
-
 
 const char htmlConfirmRestart[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being restarted.<br>
@@ -370,8 +362,7 @@ const char htmlConfirmUptime[] PROGMEM = R"rawliteral(
      <br>
      <input type="submit" name="uptimeok" alt="OK" value="OK">  
 )rawliteral";
-const char* PARAM_UPTIME_OK = "uptimeok";
-
+const char *PARAM_UPTIME_OK = "uptimeok";
 
 const char htmlConfirmUpdate[] PROGMEM = R"rawliteral(
      The Scrolling Message Board is being updated with the message:<br>
@@ -380,8 +371,7 @@ const char htmlConfirmUpdate[] PROGMEM = R"rawliteral(
      <br>
      <input type="submit" name="messageconfirm" alt="OK" value="OK">
 )rawliteral";
-const char* PARAM_MESSAGE_CONFIRM = "messageconfirm";
-
+const char *PARAM_MESSAGE_CONFIRM = "messageconfirm";
 
 const char htmlGetPushbulletCredentials[] PROGMEM = R"rawliteral(
      <br>
@@ -391,17 +381,15 @@ const char htmlGetPushbulletCredentials[] PROGMEM = R"rawliteral(
      <br>     
      <input type="submit" name="pbUpdate" alt="Update" value="OK"> 
 )rawliteral";
-const char* PARAM_INPUT_PUSHBULLET_UPDATE = "pbUpdate";
-const char* PARAM_INPUT_PUSHBULLET_ACCESS_TOKEN = "pbaccesstoken";
-
+const char *PARAM_INPUT_PUSHBULLET_UPDATE = "pbUpdate";
+const char *PARAM_INPUT_PUSHBULLET_ACCESS_TOKEN = "pbaccesstoken";
 
 const char htmlConfirmwPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been confirmed.<br>
      <br>
     <input type="submit" name="pbConfirm" alt="Confirmed" value="OK">    
 )rawliteral";
-const char* PARAM_PUSHBULLET_CONFIRM = "pbConfirm";
-
+const char *PARAM_PUSHBULLET_CONFIRM = "pbConfirm";
 
 const char htmlClearPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been cleared.<br>
@@ -411,7 +399,6 @@ const char htmlClearPusbulletAccessToken[] PROGMEM = R"rawliteral(
      Please close this window.    
 )rawliteral";
 
-
 const char htmlConfirmPusbulletAccessToken[] PROGMEM = R"rawliteral(
      The Pushbullet Access Token has been updated.<br>
      <br>
@@ -419,7 +406,6 @@ const char htmlConfirmPusbulletAccessToken[] PROGMEM = R"rawliteral(
      <br>
      Please close this window.    
 )rawliteral";
-
 
 const char htmlGetMessageboardPasswordCredentials[] PROGMEM = R"rawliteral(
      <br>
@@ -435,19 +421,17 @@ const char htmlGetMessageboardPasswordCredentials[] PROGMEM = R"rawliteral(
      <br>     
      <input type="submit" name="messageboardupdate" alt="Update" value="OK"> 
 )rawliteral";
-const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_OLD = "old";
-const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_1 = "new1";
-const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_2 = "new2";
-const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE = "messageboardupdate";
-
+const char *PARAM_INPUT_MESSAGEBOARD_PASSWORD_OLD = "old";
+const char *PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_1 = "new1";
+const char *PARAM_INPUT_MESSAGEBOARD_PASSWORD_NEW_2 = "new2";
+const char *PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE = "messageboardupdate";
 
 const char htmlMessageboardPasswordConfirmed[] PROGMEM = R"rawliteral(
      The Message Board's web update password has been changed.<br>
      <br>     
      <input type="submit" name="messageboardupdateconfirm" alt="Update" value="OK">    
 )rawliteral";
-const char* PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE_CONFIRM = "messageboardupdateconfirm";
-
+const char *PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE_CONFIRM = "messageboardupdateconfirm";
 
 const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
      <br>
@@ -464,7 +448,6 @@ const char htmlGetWifiCredentials[] PROGMEM = R"rawliteral(
      <input type="submit" alt="Update" value="OK"> 
 )rawliteral";
 
-
 const char htmlConfirmWIFI[] PROGMEM = R"rawliteral(
      The Wi-Fi credentials entered are now being tested.<br>
      <br>
@@ -479,17 +462,19 @@ const char htmlConfirmWIFI[] PROGMEM = R"rawliteral(
      <br>
 )rawliteral";
 
-
 bool setupComplete = false;
 
-void SetupSerial() {
+void SetupSerial()
+{
 
   Serial.begin(115200);
+  delay(1000);
   Serial.println("");
   Serial.println("Starting " + programID);
 }
 
-bool getNTPTime() {
+bool getNTPTime()
+{
 
   Serial.println("Getting NTP time");
 
@@ -497,9 +482,10 @@ bool getNTPTime() {
 
   struct tm timeinfo;
 
-  if (getLocalTime(&timeinfo)) {
+  if (getLocalTime(&timeinfo))
+  {
     time_t t = mktime(&timeinfo);
-    struct timeval now = { .tv_sec = t };
+    struct timeval now = {.tv_sec = t};
     settimeofday(&now, NULL);
     Serial.printf("Time set to: %s", asctime(&timeinfo));
     Serial.println();
@@ -509,7 +495,8 @@ bool getNTPTime() {
   return returnValue;
 }
 
-void SetupTime() {
+void SetupTime()
+{
 
   const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
 
@@ -523,7 +510,8 @@ void SetupTime() {
 
   timeWasSuccessfullySet = getNTPTime();
 
-  if (!timeWasSuccessfullySet) {
+  if (!timeWasSuccessfullySet)
+  {
 
     Serial.println("Time could not be set from NTP server");
 
@@ -539,21 +527,22 @@ void SetupTime() {
     timeinfo.tm_sec = 00;
 
     time_t t = mktime(&timeinfo);
-    struct timeval now = { .tv_sec = t };
+    struct timeval now = {.tv_sec = t};
     settimeofday(&now, NULL);
 
     nextTimeCheck = millis() + oneWeekFromNow;
   };
 
-  StartupTime = millis();
+  startupTime = millis();
 
-  LastTimePushbulletWasHeardFrom = millis();
+  lastTimePushbulletWasHeardFrom = millis();
 }
 
+void RefreshTimeOnceAWeek()
+{
 
-void RefreshTimeOnceAWeek() {
-
-  if (millis() > nextTimeCheck) {
+  if (millis() > nextTimeCheck)
+  {
 
     const unsigned long oneWeekFromNow = 7 * 24 * 60 * 60 * 1000;
     const unsigned long oneHourFromNow = 60 * 60 * 1000;
@@ -565,7 +554,8 @@ void RefreshTimeOnceAWeek() {
   };
 }
 
-void resetMax7219(bool clear) {
+void resetMax7219(bool clear)
+{
 
   P.displayReset();
 
@@ -577,47 +567,58 @@ void resetMax7219(bool clear) {
     P.displayClear();
 }
 
-void SetupMax7219() {
+void SetupMax7219()
+{
 
-  P.begin();  // Setup Max 7219
+  P.begin(); // Setup Max 7219
   resetMax7219(false);
 }
 
-void CheckAButton(int Button_Number, int Pressed) {
+void CheckAButton(int Button_Number, int Pressed)
+{
 
   // if button was pressed for more than 1 second, set the clear the message flag
   // if button was pressed for more that 15 seconds, set the reset network flag
 
-  if (!buttonCheckUnderway) {
+  if (!buttonCheckUnderway)
+  {
 
     // if the button is pressed, then reset the message board
-    if (digitalRead(Button_Number) == Pressed) {
+    if (digitalRead(Button_Number) == Pressed)
+    {
 
       unsigned long buttonDownTime = millis();
 
-      delay(20);  // debounce time
+      delay(20); // debounce time
 
-      if (digitalRead(Button_Number) == Pressed) {
+      if (digitalRead(Button_Number) == Pressed)
+      {
 
         buttonCheckUnderway = true;
 
-        while (digitalRead(Button_Number) == Pressed) {
+        while (digitalRead(Button_Number) == Pressed)
+        {
 
-          if (setupComplete) {
+          if (setupComplete)
+          {
 
-            if ((millis() - buttonDownTime) > buttonDownThresholdForRequestingTheMessageBoardAddress) {
+            if ((millis() - buttonDownTime) > buttonDownThresholdForRequestingTheMessageBoardAddress)
+            {
               Serial.println("Message board address requested");
               messageBoardsAddressRequested = true;
             };
 
-            if ((millis() - buttonDownTime) > buttonDownThresholdForClearingTheMessageBoard) {
+            if ((millis() - buttonDownTime) > buttonDownThresholdForClearingTheMessageBoard)
+            {
               Serial.println("Message board clear requested");
               clearMessageRequested = true;
             };
+          }
+          else
+          {
 
-          } else {
-
-            if ((millis() - buttonDownTime) > buttonDownThresholdForResetingNonVolatileMemory) {
+            if ((millis() - buttonDownTime) > buttonDownThresholdForResetingNonVolatileMemory)
+            {
               manualResetRequested = true;
             }
           }
@@ -628,26 +629,31 @@ void CheckAButton(int Button_Number, int Pressed) {
   };
 }
 
-void CheckButton() {
+void CheckButton()
+{
 
-  CheckAButton(externalButtonPin, HIGH);  // External button reads HIGH when pressed
+  CheckAButton(externalButtonPin, HIGH); // External button reads HIGH when pressed
 }
 
-void FullyScrollMessageOnMax() {
+void FullyScrollMessageOnMax()
+{
 
-  while (!P.displayAnimate() && (!clearMessageRequested)) {
+  while (!P.displayAnimate() && (!clearMessageRequested))
+  {
 
-    P.setSpeed(slider_scroll_speed);  // need to keep this here or the scrolling of the display slows to a crawl
-    CheckButton();                    // check if user wants to reset the message board
+    P.setSpeed(slider_scroll_speed); // need to keep this here or the scrolling of the display slows to a crawl
+    CheckButton();                   // check if user wants to reset the message board
     webSocket.loop();
   };
 
   resetMax7219(false);
 }
 
-void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
+void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce)
+{
 
-  if (message.length() != 0) {
+  if (message.length() != 0)
+  {
 
     // display the message
 
@@ -659,10 +665,14 @@ void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
     message.toCharArray(curMessage, message.length() + 1);
     P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
 
+    if (setupComplete)
+      webSocket.loop();
+
     // FullyScrollMessageOnMax(); - do not uncomment this line as it causes watchdog problems. Rather let the FullyScrollMessageOnMax(); coded in the loop() subroutine handle it
   };
 
-  if (displayMessageOnlyOnce) {
+  if (displayMessageOnlyOnce)
+  {
 
     // display the message once
     FullyScrollMessageOnMax();
@@ -674,40 +684,46 @@ void DisplayMessageOnMax(String message, bool displayMessageOnlyOnce) {
   }
 }
 
-void DisplayTheCurrentMessageOnMax(bool displayMessageOnlyOnce) {
+void DisplayTheCurrentMessageOnMax(bool displayMessageOnlyOnce)
+{
 
-  if (currentMessage.length() > 0) {
+  if (currentMessage.length() > 0)
+  {
     String fullMessage = currentMessage + currentMessageTimeAndDate;
     DisplayMessageOnMax(fullMessage, displayMessageOnlyOnce);
   };
-
 }
 
 //*****************  every 24 hours send a request to keep the Pushbullet account alive (with out this it would expire every 30 days)
 
-void KeepPushbulletAccountAlive(bool DoCheckNow) {
+void KeepPushbulletAccountAlive(bool DoCheckNow)
+{
 
-  if (!pushbulletIsEnabled) return;
+  if (!pushbulletIsEnabled)
+    return;
 
-  if (SendPushbulletKeepAliveRequest) {
+  if (sendPushbulletKeepAliveRequest)
+  {
 
-    secondsSinceLastKeepAliveRequest = now() - LastKeepAliveRequest;
+    secondsSinceLastKeepAliveRequest = now() - lastKeepAliveRequest;
 
-    if ((secondsSinceLastKeepAliveRequest > TwentyFourHours) || (DoCheckNow)) {
+    if ((secondsSinceLastKeepAliveRequest > twentyFourHours) || (DoCheckNow))
+    {
 
-      LastKeepAliveRequest = now();
+      lastKeepAliveRequest = now();
 
       Serial.print("Sending Pushbullet keep alive request ");
 
       WiFiClientSecure client;
-      client.setCACert(PUSHBULLET_KEEP_ALIVE_ROOT_CA);
+      client.setCACert(ZEBRA_PUSHBULLET_COM_CERTIFICATE);
 
-      if (!client.connect(PUSHBULLET_KEEP_ALIVE_HOST, https_port)) {
+      if (!client.connect(PUSHBULLET_KEEP_ALIVE_HOST, PUSHBULLET_KEEP_ALIVE_PORT))
+      {
         Serial.println("Connection failed (KeepPushbulletAccountAlive)");
         return;
       }
 
-      String Pushbullet_Message_Out = " { \"name\": \"" + Pushbullet_KeepAlive_ID + "\", \"user_iden\": \"" + My_Pushbullet_Client_ID + "\" }";
+      String Pushbullet_Message_Out = " { \"name\": \"" + pushbulletKeepAliveID + "\", \"user_iden\": \"" + myPushbulletClientID + "\" }";
 
       client.println("POST / HTTP/1.1");
       client.println("Host: " + String(PUSHBULLET_API_HOST));
@@ -718,32 +734,39 @@ void KeepPushbulletAccountAlive(bool DoCheckNow) {
       client.println(Pushbullet_Message_Out);
 
       int WaitLimit = 0;
-      while ((!client.available()) && (WaitLimit < 250)) {
-        delay(50);  //
+      while ((!client.available()) && (WaitLimit < 250))
+      {
+        delay(50); //
         WaitLimit++;
       }
 
       String Response = "";
       WaitLimit = 0;
-      while ((client.connected()) && (WaitLimit < 250)) {
+      while ((client.connected()) && (WaitLimit < 250))
+      {
         String line = client.readStringUntil('\n');
-        if (line == "\r") {
+        if (line == "\r")
+        {
           // retrieved header lines can be ignored
           break;
         }
         WaitLimit++;
       }
 
-      while (client.available()) {
+      while (client.available())
+      {
         char c = client.read();
         Response += c;
       }
 
       client.stop();
 
-      if (Response == "{}") {
+      if (Response == "{}")
+      {
         Serial.println("succeeded");
-      } else {
+      }
+      else
+      {
         Serial.println("failed");
         // Serial.println(Response);
       }
@@ -751,201 +774,237 @@ void KeepPushbulletAccountAlive(bool DoCheckNow) {
   }
 }
 
-void SetupPushbullet() {
+void SetupPushbullet()
+{
 
   Serial.println("Pushbullet setup");
 
-  pushbulletIsEnabled = (pushbulletAccessToken.length() == lengthOfAValidPushbulletAccessToken);
+  if (pushbulletAccessToken.length() == 0)
+  {
+    Serial.println("Pushbullet Access Token has not been setup");
+    pushbulletIsEnabled = false;
+    return;
+  }
+  else if (pushbulletAccessToken.length() != lengthOfAValidPushbulletAccessToken)
+  {
+    Serial.println("Invalid Pushbullet Access Token");
+    pushbulletIsEnabled = false;
+    return;
+  };
 
-  if (!pushbulletIsEnabled) return;
+  pushbulletIsEnabled = true;
 
   DisplayMessageOnMax("Setting up Pushbullet ...", true);
-  Serial.println("Pushbullet Access Token: " + pushbulletAccessToken);
 
-  String Pushbullet_Server_DirectoryAndAccessToken = Pushbullet_Server_Directory + pushbulletAccessToken;
+  String Pushbullet_Server_DirectoryAndAccessToken = pushbulletServerDirectory + pushbulletAccessToken;
   Pushbullet_Server_DirectoryAndAccessToken.trim();
-  webSocket.beginSSL(Pushbullet_Server, Pushbullet_Server_Port, Pushbullet_Server_DirectoryAndAccessToken);
 
-  webSocket.onEvent(WebSocketEvent);     // event handler
-  webSocket.setReconnectInterval(5000);  // try over 5000 again if connection has failed
+  webSocket.beginSSL(pushbulletServer, PUSHBULLET_SERVER_PORT, Pushbullet_Server_DirectoryAndAccessToken);
+  webSocket.onEvent(WebSocketEvent);
+  webSocket.setReconnectInterval(5000);
 
   GetPushbulletClientID();
   KeepPushbulletAccountAlive(true);
 }
 
-void WebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
+void WebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
+{
 
-  // KeepTheWatchDogAtBay();
-
-  LastTimePushbulletWasHeardFrom = millis();
+  lastTimePushbulletWasHeardFrom = millis();
 
   static String Last_Pushbullet_Iden;
 
-  switch (type) {
+  switch (type)
+  {
 
-    case WStype_DISCONNECTED:
-      Serial.println("Disconnected!");
-      break;
+  case WStype_DISCONNECTED:
 
-    case WStype_CONNECTED:
+    Serial.println("Disconnected!");
+    break;
 
-      webSocket.sendTXT("Connected");
-      Serial.println("Pushbullet connection successful!");
-      Serial.println();
-      //DisplayMessageOnMax("Pushbullet connection successful!", true);
-      break;
+  case WStype_CONNECTED:
 
-    case WStype_TEXT:
+    webSocket.sendTXT("Connected");
+    Serial.println("Pushbullet connection successful!");
+    Serial.println();
+    break;
+
+  case WStype_TEXT:
+  {
+    // Serial.printf("Incoming: % s\n", payload);
+
+    DynamicJsonDocument jsonDocument(4096);
+    deserializeJson(jsonDocument, payload);
+
+    if (jsonDocument["type"] == "nop")
+    {
+      Serial.println("nop");
+    }
+
+    if ((jsonDocument["type"] == "tickle") && (jsonDocument["subtype"] == "push"))
+    {
+
+      WiFiClientSecure client1;
+      client1.setCACert(API_PUSHBULLET_COM_CERTIFICATE);
+
+      if (!client1.connect(PUSHBULLET_API_HOST, PUSHBULLET_SERVER_PORT))
       {
-        //Serial.printf("Incoming: % s\n", payload);
+        Serial.println("Connection failed (WebSocketEvent)");
+        // DisplayMessageOnMax("Pushbullet connection failed!", true);
+        break;
+      }
 
-        DynamicJsonDocument jsonDocument(4096);
-        deserializeJson(jsonDocument, payload);
+      client1.println("GET /v2/pushes?limit=1 HTTP/1.1");
+      client1.println("Host: " + String(PUSHBULLET_API_HOST));
+      client1.println("Authorization: Bearer " + pushbulletAccessToken);
+      client1.println("Content-Type: application/json");
+      client1.println("Content-Length: 0");
 
-        if (jsonDocument["type"] == "nop") {
-          //Serial.println("nop");
+      client1.println();
+
+      // Serial.print(" waiting for the details ");
+      int WaitLimit = 0;
+      while ((!client1.available()) && (WaitLimit < 250))
+      {
+        delay(50);
+        WaitLimit++;
+      }
+
+      WaitLimit = 0;
+      while ((client1.connected()) && (WaitLimit < 250))
+      {
+        String line = client1.readStringUntil('\n');
+        if (line == "\r")
+        {
+          // retrieved header lines can be ignored
+          break;
+        }
+        WaitLimit++;
+      }
+
+      String Response = "";
+      while (client1.available())
+      {
+        char c = client1.read();
+        Response += c;
+      }
+
+      // Serial.println(Response);
+
+      client1.stop();
+
+      deserializeJson(jsonDocument, Response);
+      String Current_Pushbullet_Iden = jsonDocument["pushes"][0]["iden"];
+
+      if (Current_Pushbullet_Iden == Last_Pushbullet_Iden)
+      {
+
+        Serial.println(" duplicate - ignoring it");
+      }
+      else
+      {
+
+        Serial.println(" new push : ");
+        Last_Pushbullet_Iden = Current_Pushbullet_Iden;
+
+        String Title_Of_Incoming_Push = jsonDocument["pushes"][0]["title"];
+        String Body_Of_Incoming_Push = jsonDocument["pushes"][0]["body"];
+        bool Dismissed = jsonDocument["pushes"][0]["dismissed"];
+
+        Serial.print(" title = '" + Title_Of_Incoming_Push + "'");
+        Serial.print(" ; body = '" + Body_Of_Incoming_Push + "'");
+
+        if (Dismissed)
+        {
+          Serial.println(" ; dismissed = true");
+        }
+        else
+        {
+          Serial.println(" ; dismissed = false");
         }
 
-        if ((jsonDocument["type"] == "tickle") && (jsonDocument["subtype"] == "push")) {
+        Serial.print(" ");
 
-          WiFiClientSecure client1;
-          client1.setCACert(PUSHBULLET_API_ROOT_CA);
+        if (Title_Of_Incoming_Push == pushbulletTitleToReactTo)
+        {
 
-          if (!client1.connect(PUSHBULLET_API_HOST, https_port)) {
-            Serial.println("Connection failed (WebSocketEvent)");
-            //DisplayMessageOnMax("Pushbullet connection failed!", true);
-            break;
-          }
+          if (!Dismissed)
+            PushbulletDismissPush(Current_Pushbullet_Iden);
 
-          client1.println("GET /v2/pushes?limit=1 HTTP/1.1");
-          client1.println("Host: " + String(PUSHBULLET_API_HOST));
-          client1.println("Authorization: Bearer " + pushbulletAccessToken);
-          client1.println("Content-Type: application/json");
-          client1.println("Content-Length: 0");
+          if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, restartCommand))
+          {
+            Body_Of_Incoming_Push = "";
+            restartRequested = true;
+          };
 
-          client1.println();
+          if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheESP32sMemory))
+          {
+            Body_Of_Incoming_Push = "";
+            EEPROMClearRequested = true;
+            restartRequested = true;
+          };
 
-          // Serial.print(" waiting for the details ");
-          int WaitLimit = 0;
-          while ((!client1.available()) && (WaitLimit < 250)) {
-            delay(50);
-            WaitLimit++;
-          }
+          if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheMessageBoardCommand))
+          {
+            Body_Of_Incoming_Push = "";
+            clearMessageRequested = true;
+          };
 
-          WaitLimit = 0;
-          while ((client1.connected()) && (WaitLimit < 250)) {
-            String line = client1.readStringUntil('\n');
-            if (line == "\r") {
-              // retrieved header lines can be ignored
-              break;
-            }
-            WaitLimit++;
-          }
-
-          String Response = "";
-          while (client1.available()) {
-            char c = client1.read();
-            Response += c;
-          }
-
-          // Serial.println(Response);
-
-          client1.stop();
-
-          deserializeJson(jsonDocument, Response);
-          String Current_Pushbullet_Iden = jsonDocument["pushes"][0]["iden"];
-
-          if (Current_Pushbullet_Iden == Last_Pushbullet_Iden) {
-
-            Serial.println(" duplicate - ignoring it");
-
-          } else {
-
-            Serial.println(" new push : ");
-            Last_Pushbullet_Iden = Current_Pushbullet_Iden;
-
-            String Title_Of_Incoming_Push = jsonDocument["pushes"][0]["title"];
-            String Body_Of_Incoming_Push = jsonDocument["pushes"][0]["body"];
-            bool Dismissed = jsonDocument["pushes"][0]["dismissed"];
-
-            Serial.print(" title = '" + Title_Of_Incoming_Push + "'");
-            Serial.print(" ; body = '" + Body_Of_Incoming_Push + "'");
-
-            if (Dismissed) {
-              Serial.println(" ; dismissed = true");
-            } else {
-              Serial.println(" ; dismissed = false");
-            }
-
-            Serial.print(" ");
-
-            if (Title_Of_Incoming_Push == Pushbullet_Title_To_React_To) {
-
-              if (!Dismissed)
-                PushbulletDismissPush(Current_Pushbullet_Iden);
-
-              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, restartCommand)) {
-                Body_Of_Incoming_Push = "";
-                restartRequested = true;
-              };
-
-              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheESP32sMemory)) {
-                Body_Of_Incoming_Push = "";
-                EEPROMClearRequested = true;
-                restartRequested = true;
-              };
-
-              if (StringsAreMatchRegardlessOfCase(Body_Of_Incoming_Push, clearTheMessageBoardCommand)) {
-                Body_Of_Incoming_Push = "";
-                clearMessageRequested = true;
-              };
-
-              if (Body_Of_Incoming_Push != "") {
-                currentMessage = String(Body_Of_Incoming_Push);
-                DisplayTheCurrentMessage();
-                writeMessageToEEPROM(currentMessage);
-              };
-            };
+          if (Body_Of_Incoming_Push != "")
+          {
+            currentMessage = String(Body_Of_Incoming_Push);
+            DisplayTheCurrentMessage();
+            writeMessageToEEPROM(currentMessage);
           };
         };
-
-        break;
       };
+    };
 
-    case WStype_BIN:
-      Serial.println("Incoming binary data");
-      break;
+    break;
+  };
 
-    case WStype_ERROR:
-      Serial.println("Error");
-      break;
+  case WStype_BIN:
 
-    case WStype_FRAGMENT_TEXT_START:
-      Serial.println("Fragment Text Start");
-      break;
+    Serial.println("Incoming binary data");
+    break;
 
-    case WStype_FRAGMENT_BIN_START:
-      Serial.println("Fragment Bin Start");
-      break;
+  case WStype_ERROR:
 
-    case WStype_FRAGMENT:
-      Serial.println("Fragment");
-      break;
+    Serial.println("Error");
+    break;
 
-    case WStype_FRAGMENT_FIN:
-      Serial.println("Fragment finish");
-      break;
+  case WStype_FRAGMENT_TEXT_START:
+
+    Serial.println("Fragment Text Start");
+    break;
+
+  case WStype_FRAGMENT_BIN_START:
+
+    Serial.println("Fragment Bin Start");
+    break;
+
+  case WStype_FRAGMENT:
+
+    Serial.println("Fragment");
+    break;
+
+  case WStype_FRAGMENT_FIN:
+
+    Serial.println("Fragment finish");
+    break;
   };
 }
 
-void PushbulletDismissPush(String Push_Iden) {
+void PushbulletDismissPush(String Push_Iden)
+{
 
   // Serial.println(" dismissing push");
 
   WiFiClientSecure client;
-  client.setCACert(PUSHBULLET_API_ROOT_CA);
+  client.setCACert(API_PUSHBULLET_COM_CERTIFICATE);
 
-  if (!client.connect(PUSHBULLET_API_HOST, https_port)) {
+  if (!client.connect(PUSHBULLET_API_HOST, PUSHBULLET_SERVER_PORT))
+  {
     Serial.println("Connection failed (PushbulletDismissPush)");
     return;
   }
@@ -960,23 +1019,27 @@ void PushbulletDismissPush(String Push_Iden) {
   client.println(Pushbullet_Message_Out);
 
   int WaitLimit = 0;
-  while ((!client.available()) && (WaitLimit < 250)) {
-    delay(50);  //
+  while ((!client.available()) && (WaitLimit < 250))
+  {
+    delay(50); //
     WaitLimit++;
   }
 
   String Response = "";
   WaitLimit = 0;
-  while ((client.connected()) && (WaitLimit < 250)) {
+  while ((client.connected()) && (WaitLimit < 250))
+  {
     String line = client.readStringUntil('\n');
-    if (line == "\r") {
+    if (line == "\r")
+    {
       // retrieved header lines can be ignored
       break;
     }
     WaitLimit++;
   }
 
-  while (client.available()) {
+  while (client.available())
+  {
     char c = client.read();
     Response += c;
   }
@@ -988,20 +1051,30 @@ void PushbulletDismissPush(String Push_Iden) {
   String Dismissed_Pushbullet_Iden = jsonDocument["iden"];
   bool Dismissed_Pushbullet_Status = jsonDocument["dismissed"];
 
-  if ((Dismissed_Pushbullet_Iden == Push_Iden) && (Dismissed_Pushbullet_Status)) {
+  if ((Dismissed_Pushbullet_Iden == Push_Iden) && (Dismissed_Pushbullet_Status))
+  {
     // Serial.println(" dismiss successful!");
-  } else {
+  }
+  else
+  {
     // Serial.println(" dismiss not successful");
     // Serial.println(Response);
   }
 }
 
-void GetPushbulletClientID() {
+void GetPushbulletClientID()
+{
+  if (pushbulletAccessToken.length() != lengthOfAValidPushbulletAccessToken)
+  {
+    Serial.println("GetPushbulletClientID - Invalid Pushbullet Access Token");
+    return;
+  }
 
   WiFiClientSecure client;
 
-  client.setCACert(PUSHBULLET_API_ROOT_CA);
-  if (!client.connect(PUSHBULLET_API_HOST, https_port)) {
+  client.setCACert(API_PUSHBULLET_COM_CERTIFICATE);
+  if (!client.connect(PUSHBULLET_API_HOST, PUSHBULLET_SERVER_PORT))
+  {
     Serial.println("Connection failed (GetPushbulletClientID)");
     return;
   };
@@ -1013,17 +1086,20 @@ void GetPushbulletClientID() {
   client.println("Content-Length: 0");
   client.println();
 
-  //Serial.print(" waiting for the details ");
+  // Serial.print(" waiting for the details ");
   int WaitLimit = 0;
-  while ((!client.available()) && (WaitLimit < 250)) {
+  while ((!client.available()) && (WaitLimit < 250))
+  {
     delay(50);
     WaitLimit++;
   };
 
   WaitLimit = 0;
-  while ((client.connected()) && (WaitLimit < 250)) {
+  while ((client.connected()) && (WaitLimit < 250))
+  {
     String line = client.readStringUntil('\n');
-    if (line == "\r") {
+    if (line == "\r")
+    {
       // retrieved header lines can be ignored
       break;
     }
@@ -1031,7 +1107,8 @@ void GetPushbulletClientID() {
   };
 
   String Response = "";
-  while (client.available()) {
+  while (client.available())
+  {
     char c = client.read();
     Response += c;
   };
@@ -1043,20 +1120,22 @@ void GetPushbulletClientID() {
   DynamicJsonDocument jsonDocument(4096);
   deserializeJson(jsonDocument, Response);
   String cid = jsonDocument["iden"];
-  My_Pushbullet_Client_ID = cid;
+  myPushbulletClientID = cid;
 }
 
-
-void CheckPushbulletConnection() {
+void CheckPushbulletConnection()
+{
   // Failsafe:
   // If the LastTimePushbulletWasHeardFrom exceeds the specified time (default 10 minutes)
   // then restart the system
 
-  if (!pushbulletIsEnabled) return;
+  if (!pushbulletIsEnabled)
+    return;
 
-  unsigned long secondsSinceTheLastTimePushbulletWasHeardFrom = millis() - LastTimePushbulletWasHeardFrom;
+  unsigned long secondsSinceTheLastTimePushbulletWasHeardFrom = millis() - lastTimePushbulletWasHeardFrom;
 
-  if (secondsSinceTheLastTimePushbulletWasHeardFrom > RebootAfterThisManySecondsWithoutHearingFromPushbullet) {
+  if (secondsSinceTheLastTimePushbulletWasHeardFrom > rebootAfterThisManySecondsWithoutHearingFromPushbullet)
+  {
 
     Serial.println("Pushbullet triggered restart!");
     DisplayMessageOnMax("Pushbullet connection lost", true);
@@ -1064,103 +1143,114 @@ void CheckPushbulletConnection() {
   }
 }
 
-void CheckForNewMessageFromPushbullet() {
+void KeepPushbulletSessionAlive()
+{
   webSocket.loop();
 }
 
-void SetupButtons() {
+void SetupButtons()
+{
 
   pinMode(externalButtonPin, INPUT);
 }
 
-void writeMessageBoardPasswordToEEPROM(String data) {
+void writeMessageBoardPasswordToEEPROM(String data)
+{
 
   char highValues = 255;
-  char fieldSeperator = 254;
+  char fieldSeparator = 254;
 
   data.replace(String(highValues), String(""));
-  data.replace(String(fieldSeperator), String(""));
+  data.replace(String(fieldSeparator), String(""));
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + data + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
+  String EEPROMData = wifiSSID + fieldSeparator + wifiPassword + fieldSeparator + pushbulletAccessToken + fieldSeparator + data + fieldSeparator + currentMessage + fieldSeparator + currentMessageTimeAndDate;
 
   writeEEPROMString(0, EEPROMData);
 
   loadDataFromEEPROM();
 };
 
-void writePBAccessTokenToEEPROM(String data) {
+void writePBAccessTokenToEEPROM(String data)
+{
 
   const char highValues = 255;
-  const char fieldSeperator = 254;
+  const char fieldSeparator = 254;
 
   data.replace(String(highValues), String(""));
-  data.replace(String(fieldSeperator), String(""));
+  data.replace(String(fieldSeparator), String(""));
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + data + fieldSeperator + messageboardPassword + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
+  String EEPROMData = wifiSSID + fieldSeparator + wifiPassword + fieldSeparator + data + fieldSeparator + messageboardPassword + fieldSeparator + currentMessage + fieldSeparator + currentMessageTimeAndDate;
 
   writeEEPROMString(0, EEPROMData);
 
   loadDataFromEEPROM();
 };
 
-void writeMessageToEEPROM(String data) {
+void writeMessageToEEPROM(String data)
+{
 
   const char highValues = 255;
-  const char fieldSeperator = 254;
+  const char fieldSeparator = 254;
   data.replace(String(highValues), String(""));
-  // note: data may contain a field seperator (seperating the message from the time of the message)
+  // note: data may contain a field separator (separating the message from the time of the message)
 
-  String EEPROMData = wifiSSID + fieldSeperator + wifiPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + messageboardPassword + fieldSeperator + data;
+  String EEPROMData = wifiSSID + fieldSeparator + wifiPassword + fieldSeparator + pushbulletAccessToken + fieldSeparator + messageboardPassword + fieldSeparator + data;
 
   writeEEPROMString(0, EEPROMData);
 
   // after writing to the EEPROM, the data from the EEPROM is reloaded
-  // this is required as the EPPROM can only hold EepromSize bytes (inluding the SSID, Password, and Message)
-  // therefore the message lenght can only be equatl to the EepromSize - the SSID length - the Password length - 2
-  // the -3 is for: (1) the seperator between the SSID and Password, and (2) the seperator between the Password and the Message
+  // this is required as the EPPROM can only hold EepromSize bytes (including the SSID, Password, and Message)
+  // therefore the message length can only be equal to the EepromSize - the SSID length - the Password length - 2
+  // the -3 is for: (1) the separator between the SSID and Password, and (2) the separator between the Password and the Message
   // thus reloading the data from the EEPROM effectively truncates the message (stored in currMessage) to its maximum length
   loadDataFromEEPROM();
 };
 
-void writeEEPROMString(int address, String data) {
+void writeEEPROMString(int address, String data)
+{
 
   Serial.println("Write to EEPROM: " + data);
-  bool CommmitNeeded = false;
+  bool CommitNeeded = false;
 
   int dataLength = data.length();
 
   if (dataLength > EepromSize)
     dataLength = EepromSize;
 
-  for (int i = 0; i < dataLength; i++) {
+  for (int i = 0; i < dataLength; i++)
+  {
 
-    if (data[i] != EEPROM.read(address + i)) {
+    if (data[i] != EEPROM.read(address + i))
+    {
       EEPROM.write(address + i, data[i]);
-      CommmitNeeded = true;
+      CommitNeeded = true;
     }
   }
 
-  if (EEPROM.read(address + dataLength) != '\0') {
+  if (EEPROM.read(address + dataLength) != '\0')
+  {
     EEPROM.write(address + dataLength, '\0');
-    CommmitNeeded = true;
+    CommitNeeded = true;
   }
 
-  if (CommmitNeeded)
+  if (CommitNeeded)
     EEPROM.commit();
   else
     Serial.println("EEPPROM did not require an update");
 }
 
-String readEEPROMString(int address) {
+String readEEPROMString(int address)
+{
 
   String returnValue = "";
 
   int i = address;
   int EEPROMByte = EEPROM.read(i);
 
-  // if the eeprom has previousily had data stored in it, the string will terminate in a character value = 0
-  // if the eeprom has not previousily had data stored in it, the string should be terminated right off the bat by a character value = 255
-  while ((EEPROMByte != 0) && (EEPROMByte != 255) && (i < EepromSize)) {
+  // if the eeprom has previously had data stored in it, the string will terminate in a character value = 0
+  // if the eeprom has not previously had data stored in it, the string should be terminated right off the bat by a character value = 255
+  while ((EEPROMByte != 0) && (EEPROMByte != 255) && (i < EepromSize))
+  {
     returnValue.concat(char(EEPROMByte));
     EEPROMByte = EEPROM.read(++i);
   };
@@ -1171,18 +1261,19 @@ String readEEPROMString(int address) {
   return returnValue;
 }
 
-void loadDataFromEEPROM() {
+void loadDataFromEEPROM()
+{
 
   // EEPROM data is stored as:
-  //    WIFISSID(fieldSeperator)WIFIPassword(fieldSeperator)PushbulletAccessToken(fieldSeperator)messageboardPassword(fieldSeperator)currentMessage(fieldSeperator)currentMessageTimeAndDate
+  //    WIFISSID(fieldSeparator)WIFIPassword(fieldSeparator)PushbulletAccessToken(fieldSeparator)messageboardPassword(fieldSeparator)currentMessage(fieldSeparator)currentMessageTimeAndDate
 
-  const char fieldSeperator = 254;
+  const char fieldSeparator = 254;
 
   EEPROM.begin(EepromSize);
 
   String CurrentDataSavedInEEPROM = readEEPROMString(0);
 
-  String EEPROMData[6] = { "", "", "", "", "", "" };
+  String EEPROMData[6] = {"", "", "", "", "", ""};
   // EEPROMData[0] = Wi-Fi network name (SSID)
   // EEPROMData[1] = Wi-Fi password
   // EEPROMData[2] = Pushbullet Access Token
@@ -1190,17 +1281,19 @@ void loadDataFromEEPROM() {
   // EEPROMData[4] = Message
   // EEPROMData[5] = Message's time and date
 
-  if (CurrentDataSavedInEEPROM.length() > 0) {
+  if (CurrentDataSavedInEEPROM.length() > 0)
+  {
 
     int field = 0;
 
     char c;
 
-    for (int i = 0; i < CurrentDataSavedInEEPROM.length(); i++) {
+    for (int i = 0; i < CurrentDataSavedInEEPROM.length(); i++)
+    {
 
       c = CurrentDataSavedInEEPROM.charAt(i);
 
-      if ((c == fieldSeperator) && (field < 5))
+      if ((c == fieldSeparator) && (field < 5))
         field++;
       else
         EEPROMData[field] += String(c);
@@ -1217,7 +1310,8 @@ void loadDataFromEEPROM() {
   }
 }
 
-void clearTheEEPROM() {
+void clearTheEEPROM()
+{
 
   Serial.println("Start EEPROM clear");
 
@@ -1226,22 +1320,24 @@ void clearTheEEPROM() {
       EEPROM.write(i, 255);
 
   EEPROM.commit();
-  delay(5000);  // allow time for commit to happen
+  delay(5000); // allow time for commit to happen
 
   Serial.println("End EEPROM clear");
 }
 
-void SetupFromEEPROM() {
+void SetupFromEEPROM()
+{
   loadDataFromEEPROM();
 }
 
-void SetupOpeningDisplays() {
+void SetupOpeningDisplays()
+{
 
   DisplayMessageOnMax(programID, true);
 }
 
-
-bool SetupWiFiWithExistingCredentials(int maxAttempts) {
+bool SetupWiFiWithExistingCredentials(int maxAttempts)
+{
 
   // if maxAttempts = 0 there are no limit to the number of attempts that will be made
   // returns true if connected within maxAttempts
@@ -1256,7 +1352,8 @@ bool SetupWiFiWithExistingCredentials(int maxAttempts) {
 
   String message;
 
-  while ((notyetconnected) && ((maxAttempts == 0) || ((maxAttempts > 0) && (attemptCounter <= maxAttempts)))) {
+  while ((notyetconnected) && ((maxAttempts == 0) || ((maxAttempts > 0) && (attemptCounter <= maxAttempts))))
+  {
 
     if (maxAttempts > 0)
       DisplayMessageOnMax("Attempting to connect to " + wifiSSID + " - try " + String(attemptCounter) + " of " + String(maxAttempts), true);
@@ -1270,15 +1367,19 @@ bool SetupWiFiWithExistingCredentials(int maxAttempts) {
 
     timeCounter = 0;
 
-    while ((WiFi.status() != WL_CONNECTED) && (timeCounter < secondsBeforeRetrying)) {
+    while ((WiFi.status() != WL_CONNECTED) && (timeCounter < secondsBeforeRetrying))
+    {
       delay(1000);
       timeCounter++;
     }
 
-    if (WiFi.status() == WL_CONNECTED) {
+    if (WiFi.status() == WL_CONNECTED)
+    {
       notyetconnected = false;
-      LastTimeWiFiWasConnected = millis();
-    } else {
+      lastTimeWiFiWasConnected = millis();
+    }
+    else
+    {
 
       if (secondsBeforeRetrying < maxSecondsBeforeRetrying)
         secondsBeforeRetrying++;
@@ -1293,12 +1394,15 @@ bool SetupWiFiWithExistingCredentials(int maxAttempts) {
     attemptCounter++;
   };
 
-  if (notyetconnected) {
+  if (notyetconnected)
+  {
     message = "Failed to connected to ";
     message.concat(wifiSSID);
-  } else {
-    message = "Connected to ";
-    message.concat(wifiSSID);
+  }
+  else
+  {
+    message = "Connected at ";
+    message.concat(WiFi.localIP().toString());
   };
 
   DisplayMessageOnMax(message, true);
@@ -1306,7 +1410,8 @@ bool SetupWiFiWithExistingCredentials(int maxAttempts) {
   return !notyetconnected;
 };
 
-void scanAvailableNetworks() {
+void scanAvailableNetworks()
+{
 
   Serial.println("** Scan Networks **");
 
@@ -1316,7 +1421,8 @@ void scanAvailableNetworks() {
 
     Serial.println("Couldn't find any Wi-Fi networks");
 
-  else {
+  else
+  {
 
     // print the list of networks seen:
     Serial.print("Number of available networks: ");
@@ -1327,7 +1433,8 @@ void scanAvailableNetworks() {
 
     String discoveredSSIDs[numSsid];
 
-    for (int i = 0; i < numSsid; i++) {
+    for (int i = 0; i < numSsid; i++)
+    {
 
       Serial.print(i);
       Serial.print(") ");
@@ -1344,10 +1451,12 @@ void scanAvailableNetworks() {
     availableNetworks = "";
     String lastEntryAdded = "";
 
-    for (int i = 0; i < numSsid; i++) {
+    for (int i = 0; i < numSsid; i++)
+    {
 
       // ensure duplicate SSIDS are not added twice
-      if (discoveredSSIDs[i] != lastEntryAdded) {
+      if (discoveredSSIDs[i] != lastEntryAdded)
+      {
 
         lastEntryAdded = discoveredSSIDs[i];
 
@@ -1361,11 +1470,13 @@ void scanAvailableNetworks() {
   };
 }
 
-void SetupWifiWithNewCredentials() {
+void SetupWifiWithNewCredentials()
+{
 
   bool accessPointNeedsToBeConfigured = true;
 
-  while (accessPointNeedsToBeConfigured) {
+  while (accessPointNeedsToBeConfigured)
+  {
 
     String message = message;
     DisplayMessageOnMax("Wi-Fi Network Setup", true);
@@ -1377,20 +1488,21 @@ void SetupWifiWithNewCredentials() {
     Serial.print("Access Point IP Address: ");
     Serial.println(myIP);
 
-    accessPointServer.onNotFound([](AsyncWebServerRequest* request) {
+    accessPointServer.onNotFound([](AsyncWebServerRequest *request)
+                                 {
       Serial.println("Not found: " + String(request->url()));
-      request->redirect("/");
-    });
+      request->redirect("/"); });
 
-    accessPointServer.on("/confirmed", HTTP_GET, [](AsyncWebServerRequest* request) {
+    accessPointServer.on("/confirmed", HTTP_GET, [](AsyncWebServerRequest *request)
+                         {
       String html = String(htmlHeader);
       html.concat(htmlConfirmWIFI);
       html.replace("$ACCESS POINT$", String(AccessPointSSID));
       html.concat(htmlFooter);
-      request->send(200, "text/html", html);
-    });
+      request->send(200, "text/html", html); });
 
-    accessPointServer.on("/get", HTTP_GET, [](AsyncWebServerRequest* request) {
+    accessPointServer.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
+                         {
       String html = String(htmlHeader);
       String errorMessage = "";
 
@@ -1468,13 +1580,12 @@ void SetupWifiWithNewCredentials() {
       html.concat(htmlFooter);
       request->send(200, "text/html", html);
 
-      resetMax7219(true);
-    });
+      resetMax7219(true); });
 
-    accessPointevents.onConnect([](AsyncEventSourceClient* client) {
+    accessPointevents.onConnect([](AsyncEventSourceClient *client)
+                                {
       // client->send("hello!", NULL, millis(), 1000);
-      Serial.println("Access Point server connected");
-    });
+      Serial.println("Access Point server connected"); });
 
     accessPointServer.addHandler(&accessPointevents);
 
@@ -1482,15 +1593,15 @@ void SetupWifiWithNewCredentials() {
 
     scanAvailableNetworks();
 
-    accessPointServer.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+    accessPointServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+                         {
       String html = String(htmlHeader);
       html.concat(htmlGetWifiCredentials);
       html.replace("$ssid$", "");
       html.replace("$errors$", " ");
       html.replace("$options$", availableNetworks);
       html.concat(htmlFooter);
-      request->send(200, "text/html", html);
-    });
+      request->send(200, "text/html", html); });
 
     Serial.println("Access Point server started");
     message = "Step 1: please connect to Wi-Fi network  " + String(AccessPointSSID) + "     Step 2: open your browser in Incognito mode     Step 3: browse to http://" + myIP.toString() + "     Step 4: enter your Wi-Fi network information and click 'OK'";
@@ -1499,7 +1610,8 @@ void SetupWifiWithNewCredentials() {
     Serial.println("Waiting for user to update Wi-Fi info in browser");
 
     // assumes network requires a password
-    while ((currentSSID == "") || (currentPassword == "")) {
+    while ((currentSSID == "") || (currentPassword == ""))
+    {
       FullyScrollMessageOnMax();
       delay(10);
     };
@@ -1528,7 +1640,8 @@ void SetupWifiWithNewCredentials() {
 
     bool WifiSetupSucceeded = false;
 
-    if (SetupWiFiWithExistingCredentials(10)) {
+    if (SetupWiFiWithExistingCredentials(10))
+    {
 
       WifiSetupSucceeded = true;
 
@@ -1537,13 +1650,13 @@ void SetupWifiWithNewCredentials() {
       // while the stored SSID and password are not needed at this point as they are about to be replaced
       // the stored message is required as it will need to be stored with the new SSID, Password and Pushbullet Access Token.
       // Accordingly, first read the EEPROM which will get the stored SSID, Password, Pushbullet Access Token and Message
-      // and then second write the new SSID, new Password, new Pushbullet Access Token and perviousily stored message
+      // and then second write the new SSID, new Password, new Pushbullet Access Token and perviously stored message
       //
       loadDataFromEEPROM();
 
-      const char fieldSeperator = 254;
+      const char fieldSeparator = 254;
 
-      String EEPROMData = newSSID + fieldSeperator + newPassword + fieldSeperator + pushbulletAccessToken + fieldSeperator + currentMessage + fieldSeperator + currentMessageTimeAndDate;
+      String EEPROMData = newSSID + fieldSeparator + newPassword + fieldSeparator + pushbulletAccessToken + fieldSeparator + currentMessage + fieldSeparator + currentMessageTimeAndDate;
 
       writeEEPROMString(0, EEPROMData);
 
@@ -1558,14 +1671,16 @@ void SetupWifiWithNewCredentials() {
   };
 };
 
-bool StringsAreMatchRegardlessOfCase(String s1, String s2) {
+bool StringsAreMatchRegardlessOfCase(String s1, String s2)
+{
 
   s1.toUpperCase();
   s2.toUpperCase();
   return (s1 == s2);
 }
 
-String GetUpTime() {
+String GetUpTime()
+{
 
   unsigned long ms = millis();
 
@@ -1587,37 +1702,53 @@ String GetUpTime() {
 
   String returnValue = "";
 
-  if (numberOfDays == 1) {
+  if (numberOfDays == 1)
+  {
     returnValue.concat("1 day, ");
-  } else {
-    if (numberOfDays > 1) {
+  }
+  else
+  {
+    if (numberOfDays > 1)
+    {
       returnValue.concat(String(numberOfDays));
       returnValue.concat(" days, ");
     };
   };
 
-  if (numberOfHours == 1) {
+  if (numberOfHours == 1)
+  {
     returnValue.concat("1 hour, ");
-  } else {
-    if (numberOfHours > 1) {
+  }
+  else
+  {
+    if (numberOfHours > 1)
+    {
       returnValue.concat(String(numberOfHours));
       returnValue.concat(" hours, ");
     };
   };
 
-  if (numberOfMinutes == 1) {
+  if (numberOfMinutes == 1)
+  {
     returnValue.concat("1 minute, ");
-  } else {
-    if (numberOfMinutes > 1) {
+  }
+  else
+  {
+    if (numberOfMinutes > 1)
+    {
       returnValue.concat(String(numberOfMinutes));
       returnValue.concat(" minutes, ");
     };
   };
 
-  if (numberOfSeconds == 1) {
+  if (numberOfSeconds == 1)
+  {
     returnValue.concat("1 second.");
-  } else {
-    if (numberOfSeconds > 1) {
+  }
+  else
+  {
+    if (numberOfSeconds > 1)
+    {
       returnValue.concat(String(numberOfSeconds));
       returnValue.concat(" seconds.");
     };
@@ -1625,13 +1756,15 @@ String GetUpTime() {
 
   // tweak the return value so that it is more English like
   returnValue.trim();
-  if (returnValue.endsWith(",")) {
+  if (returnValue.endsWith(","))
+  {
     returnValue = returnValue.substring(0, returnValue.length() - 1);
     returnValue.concat(".");
   };
 
   int pos = returnValue.lastIndexOf(",");
-  if (pos > -1) {
+  if (pos > -1)
+  {
     String firstSection = returnValue.substring(0, pos);
     String secondSection = returnValue.substring(pos + 1);
     returnValue = firstSection + " and" + secondSection;
@@ -1641,14 +1774,16 @@ String GetUpTime() {
 }
 
 // ************************************************************************************************************************************************************
-void SetupWebServer() {
+void SetupWebServer()
+{
 
-  server.onNotFound([](AsyncWebServerRequest* request) {
+  server.onNotFound([](AsyncWebServerRequest *request)
+                    {
     Serial.println("Not found: " + String(request->url()));
-    request->redirect("/");
-  });
+    request->redirect("/"); });
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlDataEntryWindow window
 
     String html = String(htmlHeader);
@@ -1687,10 +1822,10 @@ void SetupWebServer() {
     };
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/htmlConfirmCleared", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmCleared", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlConfirmCleared window
 
     String html = String(htmlHeader);
@@ -1699,10 +1834,10 @@ void SetupWebServer() {
 
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
-    clearMessageRequested = true;
-  });
+    clearMessageRequested = true; });
 
-  server.on("/htmlConfirmMemoryCleared", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmMemoryCleared", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlConfirmCleared window
 
     String html = String(htmlHeader);
@@ -1712,10 +1847,10 @@ void SetupWebServer() {
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
     EEPROMClearRequested = true;
-    restartRequested = true;
-  });
+    restartRequested = true; });
 
-  server.on("/htmlConfirmRestart", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmRestart", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlConfirmCleared window
 
     String html = String(htmlHeader);
@@ -1724,10 +1859,10 @@ void SetupWebServer() {
 
     html.concat(htmlFooter);
     request->send(200, "text/html", html);
-    restartRequested = true;
-  });
+    restartRequested = true; });
 
-  server.on("/htmlConfirmUptime", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmUptime", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlConfirmUptime window
 
     String html = String(htmlHeader);
@@ -1736,10 +1871,10 @@ void SetupWebServer() {
     html.replace("$uptime$", GetUpTime());
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/htmlConfirmUpdate", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlConfirmUpdate", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlConfirmUpdate window
 
     const String quote = String('"');
@@ -1757,10 +1892,10 @@ void SetupWebServer() {
     html.replace("$MESSAGE$", htmlFriendlyCurrentMessage);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/pushbullet", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/pushbullet", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlGetPushbulletCredentials window
 
     const String quote = String('"');
@@ -1781,10 +1916,10 @@ void SetupWebServer() {
     html.replace("$errors$", htmlFriendlyFeedback);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/clearpushbulletaccesstoken", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/clearpushbulletaccesstoken", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present confirmwPusbulletAccessToken window
 
     String html = String(htmlHeader);
@@ -1794,10 +1929,10 @@ void SetupWebServer() {
     html.concat(htmlFooter);
     restartRequested = true;
 
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/confirmpushbulletaccesstoken", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/confirmpushbulletaccesstoken", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present confirmwPusbulletAccessToken window
 
     String html = String(htmlHeader);
@@ -1807,11 +1942,10 @@ void SetupWebServer() {
     html.concat(htmlFooter);
     restartRequested = true;
 
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-
-  server.on("/password", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/password", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlGetMessageboardPasswordCredentials window
 
     const String quote = String('"');
@@ -1829,10 +1963,10 @@ void SetupWebServer() {
     html.replace("$errors$", htmlFriendlyFeedback);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/htmlMessageboardPasswordConfirmed", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/htmlMessageboardPasswordConfirmed", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // present htmlMessageboardPasswordConfirmed window
 
     String html = String(htmlHeader);
@@ -1840,10 +1974,10 @@ void SetupWebServer() {
     html.concat(htmlMessageboardPasswordConfirmed);
 
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 
-  server.on("/get", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     //
 
     htmlFriendlyFeedback = "";
@@ -1899,8 +2033,8 @@ void SetupWebServer() {
         inputTimeCheckboxString = request->getParam(PARAM_INPUT_INCLUDETIME)->value();
 
         if (inputTimeCheckboxString == "on") {
-          const char fieldSeperator = 254;
-          inputMessage.concat(fieldSeperator);
+          const char fieldSeparator = 254;
+          inputMessage.concat(fieldSeparator);
           inputMessage.concat(" - ");
           inputMessage.concat(GetFormatTimeandDate());
         };
@@ -1996,29 +2130,29 @@ void SetupWebServer() {
     if (request->hasParam(PARAM_INPUT_MESSAGEBOARD_PASSWORD_UPDATE_CONFIRM)) {
       request->redirect("/");
       return;
-    };
-  });
+    }; });
 
-  events.onConnect([](AsyncEventSourceClient* client) {
+  events.onConnect([](AsyncEventSourceClient *client)
+                   {
     // client->send("hello!", NULL, millis(), 1000);
-    Serial.println("Webserver connected");
-  });
+    Serial.println("Webserver connected"); });
 
   server.addHandler(&events);
 
   server.begin();
 
   // request the user enter the message on the webpage
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     String html = String(htmlHeader);
     html.concat(htmlDataEntryWindow);
     html.replace("$MESSAGE$", currentMessage);
     html.concat(htmlFooter);
-    request->send(200, "text/html", html);
-  });
+    request->send(200, "text/html", html); });
 }
 
-void SetupOTAUpdate() {
+void SetupOTAUpdate()
+{
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
 
@@ -2033,7 +2167,8 @@ void SetupOTAUpdate() {
   // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
 
   ArduinoOTA
-    .onStart([]() {
+      .onStart([]()
+               {
       String type;
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
@@ -2041,27 +2176,25 @@ void SetupOTAUpdate() {
         type = "filesystem";
 
       // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    })
-    .onEnd([]() {
-      Serial.println("\nEnd");
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
+      Serial.println("Start updating " + type); })
+      .onEnd([]()
+             { Serial.println("\nEnd"); })
+      .onProgress([](unsigned int progress, unsigned int total)
+                  { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); })
+      .onError([](ota_error_t error)
+               {
       Serial.printf("Error[%u]: ", error);
       if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
       else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
       else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
       else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
+      else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
 
   ArduinoOTA.begin();
 }
 
-void SetupFinalDisplays() {
+void SetupFinalDisplays()
+{
   DisplayMessageOnMax("Setup complete", true);
 
   DisplayMessageBoardsAddressAsNeeded();
@@ -2069,49 +2202,61 @@ void SetupFinalDisplays() {
   DisplayTheCurrentMessage();
 }
 
-
-void CheckWifiConnection() {
+void CheckWifiConnection()
+{
   // if connection has been out for over two minutes restart
 
-  if (WiFi.status() == WL_CONNECTED) {
-    LastTimeWiFiWasConnected = millis();
-  } else {
-    if ((millis() - LastTimeWiFiWasConnected) > TwoMinutes) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    lastTimeWiFiWasConnected = millis();
+  }
+  else
+  {
+    if ((millis() - lastTimeWiFiWasConnected) > twoMinutes)
+    {
       DisplayMessageOnMax("WiFI connection lost", true);
       restartRequested = true;
     }
   }
 }
 
-void DisplayTheCurrentMessage() {
+void DisplayTheCurrentMessage()
+{
 
-  if (currentMessage.length() > 0) {
+  if (currentMessage.length() > 0)
+  {
 
     bool showOnlyOnce = currentMessage.startsWith("[1]");
 
-    if (showOnlyOnce) {
+    if (showOnlyOnce)
+    {
       currentMessage.remove(0, 3);
       DisplayTheCurrentMessageOnMax(true);
       currentMessage = "[1]" + currentMessage;
-    } else
+    }
+    else
       DisplayTheCurrentMessageOnMax(false);
   };
 };
 
-void ClearDisplayAsNeeded() {
-  if (clearMessageRequested) {
+void ClearDisplayAsNeeded()
+{
+  if (clearMessageRequested)
+  {
 
     Serial.println("Clearing the message board");
     writeMessageToEEPROM(" ");
     DisplayMessageOnMax(" ", true);
 
     clearMessageRequested = false;
-    messageBoardsAddressRequested = false;  // if message was cleared ignore request to display the message board's address
+    messageBoardsAddressRequested = false; // if message was cleared ignore request to display the message board's address
   };
 }
 
-void DisplayMessageBoardsAddressAsNeeded() {
-  if (messageBoardsAddressRequested) {
+void DisplayMessageBoardsAddressAsNeeded()
+{
+  if (messageBoardsAddressRequested)
+  {
 
     String message = "To update the scrolling message please browse to http://";
     message.concat(WiFi.localIP().toString());
@@ -2125,15 +2270,15 @@ void DisplayMessageBoardsAddressAsNeeded() {
   };
 };
 
-
-String GetFormatTimeandDate() {
+String GetFormatTimeandDate()
+{
 
   struct timeval tvTime;
 
   gettimeofday(&tvTime, NULL);
 
   int iTotal_seconds = tvTime.tv_sec;
-  struct tm* ptm = localtime((const time_t*)&iTotal_seconds);
+  struct tm *ptm = localtime((const time_t *)&iTotal_seconds);
 
   int iYear = ptm->tm_year - 100;
   int iMonth = ptm->tm_mon + 1;
@@ -2148,7 +2293,8 @@ String GetFormatTimeandDate() {
   bool FormatOptionIncludesTime = false;
   bool FormatOptionIncludesDate = false;
 
-  if (SHOW_TIME_IN_12_HOUR_FORMAT) {
+  if (SHOW_TIME_IN_12_HOUR_FORMAT)
+  {
 
     if (iHour < 12)
       indicatorForAmPm = " a.m.";
@@ -2162,128 +2308,144 @@ String GetFormatTimeandDate() {
   char buffer1[10];
   char buffer2[10];
 
-  switch (TIME_FORMAT_OPTION) {
-      // 1: HH:MM
-      // 2: HH:MM:SS
-      // 3: HH:MM:SS.T
-      // 4: MM/DD
-      // 4: YY/MM/DD
-      // 6: MM/DD/YY
-      // 7: HH:MM & MM/DD
-      // 8: HH:MM & YY/MM/DD
-      // 9: HH:MM & MM/DD/YY
-      // 10: HH:MM:SS & YY/MM/DD
-      // 11: HH:MM:SS & MM/DD/YY
+  switch (TIME_FORMAT_OPTION)
+  {
+    // 1: HH:MM
+    // 2: HH:MM:SS
+    // 3: HH:MM:SS.T
+    // 4: MM/DD
+    // 4: YY/MM/DD
+    // 6: MM/DD/YY
+    // 7: HH:MM & MM/DD
+    // 8: HH:MM & YY/MM/DD
+    // 9: HH:MM & MM/DD/YY
+    // 10: HH:MM:SS & YY/MM/DD
+    // 11: HH:MM:SS & MM/DD/YY
 
-    case 1:
-      {
-        if (iSecond & 0x01) {
-          sprintf(buffer1, "%02d %02d", iHour, iMinute);
-        } else {
-          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
-        };
-        FormatOptionIncludesTime = true;
-        break;
-      }
-
-    case 2:
-      {
-        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
-        FormatOptionIncludesTime = true;
-        break;
-      }
-
-    case 3:
-      {
-        sprintf(buffer1, "%02d:%02d:%02d.%01d", iHour, iMinute, iSecond, iTenthOfASecond);
-        FormatOptionIncludesTime = true;
-        break;
-      }
-
-    case 4:
-      {
-        sprintf(buffer1, "%02d/%02d", iMonth, iDay);
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 5:
-      {
-        sprintf(buffer1, "%02d/%02d/%02d", iYear, iMonth, iDay);
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 6:
-      {
-        sprintf(buffer1, "%02d/%02d/%02d", iMonth, iDay, iYear);
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 7:
-      {
-        if (iSecond & 0x01) {
-          sprintf(buffer1, "%02d %02d", iHour, iMinute);
-        } else {
-          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
-        };
-        sprintf(buffer2, "%02d/%02d", iMonth, iDay);
-        FormatOptionIncludesTime = true;
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 8:
-      {
-        if (iSecond & 0x01) {
-          sprintf(buffer1, "%02d %02d", iHour, iMinute);
-        } else {
-          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
-        };
-        sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
-        FormatOptionIncludesTime = true;
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 9:
-      {
-        if (iSecond & 0x01) {
-          sprintf(buffer1, "%02d %02d", iHour, iMinute);
-        } else {
-          sprintf(buffer1, "%02d:%02d", iHour, iMinute);
-        };
-        sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
-        FormatOptionIncludesTime = true;
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 10:
-      {
-        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
-        sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
-        FormatOptionIncludesTime = true;
-        FormatOptionIncludesDate = true;
-        break;
-      }
-
-    case 11:
-      {
-        sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
-        sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
-        FormatOptionIncludesTime = true;
-        FormatOptionIncludesDate = true;
-        break;
-      }
+  case 1:
+  {
+    if (iSecond & 0x01)
+    {
+      sprintf(buffer1, "%02d %02d", iHour, iMinute);
+    }
+    else
+    {
+      sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+    };
+    FormatOptionIncludesTime = true;
+    break;
   }
 
-  if (FormatOptionIncludesTime) {
+  case 2:
+  {
+    sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+    FormatOptionIncludesTime = true;
+    break;
+  }
 
-    if (SHOW_TIME_IN_12_HOUR_FORMAT) {
+  case 3:
+  {
+    sprintf(buffer1, "%02d:%02d:%02d.%01d", iHour, iMinute, iSecond, iTenthOfASecond);
+    FormatOptionIncludesTime = true;
+    break;
+  }
 
-      if ((buffer1[0] == '0') & (buffer1[1] == '0')) {
+  case 4:
+  {
+    sprintf(buffer1, "%02d/%02d", iMonth, iDay);
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 5:
+  {
+    sprintf(buffer1, "%02d/%02d/%02d", iYear, iMonth, iDay);
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 6:
+  {
+    sprintf(buffer1, "%02d/%02d/%02d", iMonth, iDay, iYear);
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 7:
+  {
+    if (iSecond & 0x01)
+    {
+      sprintf(buffer1, "%02d %02d", iHour, iMinute);
+    }
+    else
+    {
+      sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+    };
+    sprintf(buffer2, "%02d/%02d", iMonth, iDay);
+    FormatOptionIncludesTime = true;
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 8:
+  {
+    if (iSecond & 0x01)
+    {
+      sprintf(buffer1, "%02d %02d", iHour, iMinute);
+    }
+    else
+    {
+      sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+    };
+    sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
+    FormatOptionIncludesTime = true;
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 9:
+  {
+    if (iSecond & 0x01)
+    {
+      sprintf(buffer1, "%02d %02d", iHour, iMinute);
+    }
+    else
+    {
+      sprintf(buffer1, "%02d:%02d", iHour, iMinute);
+    };
+    sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
+    FormatOptionIncludesTime = true;
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 10:
+  {
+    sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+    sprintf(buffer2, "%02d/%02d/%02d", iYear, iMonth, iDay);
+    FormatOptionIncludesTime = true;
+    FormatOptionIncludesDate = true;
+    break;
+  }
+
+  case 11:
+  {
+    sprintf(buffer1, "%02d:%02d:%02d", iHour, iMinute, iSecond);
+    sprintf(buffer2, "%02d/%02d/%02d", iMonth, iDay, iYear);
+    FormatOptionIncludesTime = true;
+    FormatOptionIncludesDate = true;
+    break;
+  }
+  }
+
+  if (FormatOptionIncludesTime)
+  {
+
+    if (SHOW_TIME_IN_12_HOUR_FORMAT)
+    {
+
+      if ((buffer1[0] == '0') & (buffer1[1] == '0'))
+      {
         buffer1[0] = '1';
         buffer1[1] = '2';
       };
@@ -2297,7 +2459,8 @@ String GetFormatTimeandDate() {
   String DateString = String(buffer2);
 
   String returnResult = "";
-  if (FormatOptionIncludesTime) {
+  if (FormatOptionIncludesTime)
+  {
     returnResult.concat(TimeString);
     returnResult.trim();
   };
@@ -2305,7 +2468,8 @@ String GetFormatTimeandDate() {
   if (FormatOptionIncludesTime && FormatOptionIncludesDate)
     returnResult.concat(" ");
 
-  if (FormatOptionIncludesDate) {
+  if (FormatOptionIncludesDate)
+  {
     returnResult.concat(DateString);
     returnResult.trim();
   };
@@ -2313,18 +2477,21 @@ String GetFormatTimeandDate() {
   return returnResult;
 };
 
-void RestartAndClearAsNeeded() {
+void RestartAndClearAsNeeded()
+{
 
   if (EEPROMClearRequested)
     clearTheEEPROM();
 
-  if (restartRequested) {
+  if (restartRequested)
+  {
     DisplayMessageOnMax("Restarting ...", true);
     ESP.restart();
   };
 }
 
-void setup() {
+void setup()
+{
 
   SetupSerial();
   SetupMax7219();
@@ -2347,20 +2514,23 @@ void setup() {
   setupComplete = true;
 }
 
-void loop() {
-
+void loop()
+{
   CheckWifiConnection();
+
   CheckPushbulletConnection();
   KeepPushbulletAccountAlive(false);
-  ArduinoOTA.handle();
+  KeepPushbulletSessionAlive();
+
   RefreshTimeOnceAWeek();
 
   CheckButton();
   ClearDisplayAsNeeded();
   DisplayMessageBoardsAddressAsNeeded();
 
-  CheckForNewMessageFromPushbullet();
-
   FullyScrollMessageOnMax();
+
   RestartAndClearAsNeeded();
+
+  ArduinoOTA.handle();
 };
