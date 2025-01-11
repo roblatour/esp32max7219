@@ -122,7 +122,7 @@
 #include "pushbulletCertificates.h"
 
 // Program ID
-const String programID = "ESP32 Message Board v2.3";
+const String programID = "ESP32 Message Board v2.4";
 
 // Connection Pins:
 const int externalButtonPin = EXTERNAL_BUTTON_PIN;
