@@ -1,4 +1,4 @@
-// ESP32 Message Board v2.3
+// ESP32 Message Board v2.4
 // Copyright Rob Latour, 2025 - MIT License
 //
 // ref: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
@@ -81,7 +81,7 @@
 //     Donations welcome at https://github.com/roblatour/esp32max7219
 
 //
-// Board Manager: esp32 By Espressif Systems - version 2.0.13
+// Board Manager: esp32 By Espressif Systems - version 2.0.11
 //                DOIT ESP32 DEVKIT V1
 //
 // Libraries:
@@ -726,7 +726,7 @@ void KeepPushbulletAccountAlive(bool DoCheckNow)
       String Pushbullet_Message_Out = " { \"name\": \"" + pushbulletKeepAliveID + "\", \"user_iden\": \"" + myPushbulletClientID + "\" }";
 
       client.println("POST / HTTP/1.1");
-      client.println("Host: " + String(PUSHBULLET_API_HOST));
+      client.println("Host: " + String(PUSHBULLET_KEEP_ALIVE_HOST));
       client.println("Authorization: Bearer " + pushbulletAccessToken);
       client.println("Content-Type: application/json");
       client.println("Content-Length: " + String(Pushbullet_Message_Out.length()));
@@ -768,7 +768,7 @@ void KeepPushbulletAccountAlive(bool DoCheckNow)
       else
       {
         Serial.println("failed");
-        // Serial.println(Response);
+        Serial.println(Response);
       }
     }
   }
