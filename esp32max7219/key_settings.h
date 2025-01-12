@@ -57,5 +57,5 @@
                                                                                                                //   11: HH:MM:SS & MM/DD/YY
 																											   
 
-#define SECRET_OTA_HOSTNAME "ESP32MsgBoard" // Over The Air (OTA) update host name
-#define SECRET_OTA_PASSWORD "MsgBoard"      // OTA password
+#define SECRET_OTA_HOSTNAME "ESP32MsgBoard"                                                                    // Over The Air (OTA) update host name
+#define SECRET_OTA_PASSWORD "MsgBoard"                                                                         // OTA password
