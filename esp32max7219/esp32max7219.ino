@@ -1,4 +1,4 @@
-// ESP32 Message Board v2.5
+// ESP32 Message Board v2.6
 // Copyright Rob Latour, 2025 - MIT License
 //
 // ref: https://hackaday.io/project/170281-voice-controlled-scrolling-message-board
@@ -84,6 +84,12 @@
 // Board Manager: esp32 By Espressif Systems - version 2.0.11
 //                DOIT ESP32 DEVKIT V1
 //
+//  Tools:
+//  Core Level Debug:                      None
+//  Erase all flash before sketch upload:  Disabled
+//  Flash frequency:                       80MHz
+//  Upload speed:                          92160
+//
 // Libraries:
 // ArduinoJson         6.19.4 Benoit Blanchon https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 // ArduinoOTA          2.0.0  (native to the Arduino IDE libraries)
@@ -99,7 +105,7 @@
 // SPI                 2.0.0  (native to the Arduino IDE libraries)
 // Time                1.6.1  Paul Stoffregen version 1.6.1 https://github.com/PaulStoffregen/Time
 // Update              2.0.0  (native to the Arduino IDE libraries)
-// WebSockets          2.4.0  Markus Sattler https://github.com/Links2004/arduinoWebSockets
+// WebSockets          2.7.1  Markus Sattler https://github.com/Links2004/arduinoWebSockets
 // WiFi                2.0.0  (native to the Arduino IDE libraries)
 // WiFiClientSecure    2.0.0  (native to the Arduino IDE libraries)
 
@@ -122,7 +128,7 @@
 #include "pushbulletCertificates.h"
 
 // Program ID
-const String programID = "ESP32 Message Board v2.5";
+const String programID = "ESP32 Message Board v2.6";
 
 // Connection Pins:
 const int externalButtonPin = EXTERNAL_BUTTON_PIN;
@@ -2199,42 +2205,78 @@ void setupFinalDisplays()
 
 void checkWifiConnection()
 {
-  // if connection has been out for over two minutes restart
+  // Enhanced WiFi connection checking with non-blocking reconnection logic
+
+  static unsigned long lastWiFiCheck = 0;
+  static unsigned long lastReconnectAttempt = 0;
+  static unsigned long reconnectStartTime = 0;
+  static int reconnectAttempts = 0;
+  static bool reconnectInProgress = false;
+
+  const unsigned long wifiCheckInterval = 5000;  // Check every 5 seconds
+  const unsigned long reconnectInterval = 30000; // Wait 30 seconds between reconnect attempts
+  const unsigned long reconnectTimeout = 20000;  // Wait 20 seconds for each reconnect attempt
+  const unsigned long tenMinutes = 600000;       // 10 minutes before restart
+  const int maxReconnectAttempts = 5;            // Max attempts before restart
+
+  // Only check WiFi status every 5 seconds to avoid constant checking
+  if (millis() - lastWiFiCheck < wifiCheckInterval)
+  {
+    return;
+  }
+  lastWiFiCheck = millis();
 
   if (WiFi.status() == WL_CONNECTED)
   {
     lastTimeWiFiWasConnected = millis();
+    reconnectAttempts = 0;       // Reset attempt counter on successful connection
+    reconnectInProgress = false; // Clear reconnect flag
   }
   else
   {
+    // If we're currently attempting to reconnect, check if it timed out
+    if (reconnectInProgress)
+    {
+      if (millis() - reconnectStartTime > reconnectTimeout)
+      {
+        Serial.println("WiFi reconnection attempt timed out");
+        reconnectInProgress = false;
+      }
+      else
+      {
+        // Still waiting for current reconnect attempt - don't start another
+        return;
+      }
+    }
 
-    // attempt to reconnect to Wi-Fi
+    Serial.println("WiFi connection lost, status: " + String(WiFi.status()));
 
+    // Don't attempt reconnect too frequently
+    if (millis() - lastReconnectAttempt < reconnectInterval)
+    {
+      return;
+    }
+
+    lastReconnectAttempt = millis();
+    reconnectStartTime = millis();
+    reconnectAttempts++;
+    reconnectInProgress = true;
+
+    Serial.println("Attempting WiFi reconnection, attempt: " + String(reconnectAttempts));
+
+    // Use non-blocking reconnection approach
     WiFi.disconnect();
-
+    delay(100); // Small delay for disconnect to complete
     WiFi.mode(WIFI_STA);
-
+    delay(100); // Small delay for mode change
     WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 
-    const int numberOfReattempts = 10;
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < numberOfReattempts)
+    // Check if we should restart after prolonged disconnection
+    if ((millis() - lastTimeWiFiWasConnected) > tenMinutes || reconnectAttempts > maxReconnectAttempts)
     {
-      delay(1000);
-      attempts++;
-    };
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      lastTimeWiFiWasConnected = millis();
-    }
-    else
-    {
-      if ((millis() - lastTimeWiFiWasConnected) > twoMinutes)
-      {
-        displayMessageOnMax("WiFi connection lost", true);
-        restartRequested = true;
-      }
+      Serial.println("WiFi connection lost for too long or too many failed attempts, restarting...");
+      displayMessageOnMax("WiFi connection lost - restarting", true);
+      restartRequested = true;
     }
   }
 }
@@ -2536,21 +2578,28 @@ void setup()
 
 void loop()
 {
-  checkWifiConnection();
+  static unsigned long lastMaintenanceTime = 0;
+  const unsigned long maintenanceInterval = 1000; // Run maintenance tasks every second
 
-  checkPushbulletConnection();
-  keepPushbulletAccountAlive(false);
-  keepPushbulletSessionAlive();
-
-  refreshTimeOnceAWeek();
-
+  // Always handle immediate user interactions and display
   checkButton();
   clearDisplayAsNeeded();
   displayMessageBoardsAddressAsNeeded();
-
   fullyScrollMessageOnMax();
 
-  restartAndClearAsNeeded();
+  // Run maintenance tasks less frequently to reduce blocking
+  if (millis() - lastMaintenanceTime > maintenanceInterval)
+  {
+    checkWifiConnection(); // Now non-blocking
+    checkPushbulletConnection();
+    keepPushbulletAccountAlive(false);
+    refreshTimeOnceAWeek();
+    restartAndClearAsNeeded();
 
+    lastMaintenanceTime = millis();
+  }
+
+  // Handle network tasks frequently to prevent timeouts
+  keepPushbulletSessionAlive();
   ArduinoOTA.handle();
 };
